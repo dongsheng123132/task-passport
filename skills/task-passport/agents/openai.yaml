@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Passport"
+  short_description: "Continue verified task state across AI harnesses"
+  default_prompt: "Open the exact task passport, continue from verified state, and checkpoint the result safely."

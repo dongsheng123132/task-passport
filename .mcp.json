@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "task-passport": {
+      "command": "node",
+      "args": ["${CODEBUDDY_PLUGIN_ROOT}/cli.js", "mcp"],
+      "env": {
+        "TASK_PASSPORT_HARNESS": "workbuddy"
+      }
+    }
+  }
+}

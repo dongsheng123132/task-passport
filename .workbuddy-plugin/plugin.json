@@ -1,0 +1,12 @@
+{
+  "name": "task-passport",
+  "version": "0.2.1",
+  "description": "Carry verified task state across WorkBuddy, Claude Code, Codex, and DeepSeek Harness without copying chat history.",
+  "author": {
+    "name": "2Origin"
+  },
+  "homepage": "https://github.com/dongsheng123132/task-passport",
+  "repository": "https://github.com/dongsheng123132/task-passport",
+  "license": "MIT",
+  "keywords": ["task-handoff", "agent-memory", "cross-harness", "mcp", "workbuddy"]
+}
