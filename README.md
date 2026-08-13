@@ -20,10 +20,12 @@
 从 GitHub 安装（纯 JavaScript，仓库已包含运行产物，不需要 `prepare` 构建权限）：
 
 ```sh
-dsh plugin --profile passport add github:dongsheng123132/task-passport
-dsh --profile passport --dump-config
-dsh --profile passport web
+dsh plugin --profile web add task-passport@0.2.1
+dsh --profile web --dump-config
+dsh web
 ```
+
+`dsh web` 在当前 rc.5 固定组合 `web` profile；需要浏览器界面时，插件也应安装到这个 profile。自定义 profile 可用于 TUI，但不能作为 `web` 子命令的父级 profile。
 
 如果 U-King 不在 PATH，在该 profile 的 `cordis.patch.yml` 覆盖插件配置：
 
