@@ -1,12 +1,13 @@
 {
   "name": "task-passport",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Carry durable task state across AI harnesses. Includes a CLI and a DeepSeek Harness bundle.",
   "type": "module",
   "main": "index.js",
   "exports": {
     ".": "./index.js",
-    "./core": "./core.js"
+    "./core": "./core.js",
+    "./mcp": "./mcp.js"
   },
   "bin": {
     "task-passport": "./cli.js"
@@ -14,15 +15,16 @@
   "files": [
     "cli.js",
     "core.js",
+    "mcp.js",
     "index.js",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test test/core.test.mjs",
+    "test": "node --test test/*.test.mjs",
     "test:e2e:uking": "node test/e2e-uking.mjs",
-    "check": "node --check core.js && node --check index.js && node --check cli.js",
+    "check": "node --check core.js && node --check index.js && node --check mcp.js && node --check cli.js",
     "pack:check": "npm pack --dry-run"
   },
   "dsh": {

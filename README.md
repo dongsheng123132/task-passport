@@ -66,6 +66,17 @@ task-passport checkpoint --file next-state.json --expected-version 4
 
 长状态只接受文件，不塞命令行参数。stdout 除 `prompt` 外只输出 JSON，适合 Agent 与脚本调用。
 
+## Claude Code / Codex
+
+同一个 npm 包也提供标准输入输出 MCP 服务。Claude Code 和 Codex 只是薄适配器，仍然读写同一本护照：
+
+```powershell
+claude mcp add --scope user task-passport -- npx --yes task-passport@0.2.0 mcp
+codex mcp add task-passport -- npx --yes task-passport@0.2.0 mcp
+```
+
+接入后，两边都能看到相同的四个工具：`task_passport_list`、`task_passport_open`、`task_passport_new`、`task_passport_checkpoint`。如果是 U-King 便携版，可给 MCP 进程设置 `TASK_PASSPORT_UKING` 指向实际 exe。
+
 ## 三个概念
 
 | 概念 | 生命周期 | 示例 |

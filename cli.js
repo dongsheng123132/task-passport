@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises'
 import { createPassportClient, defaultUkingHints, handoffPrompt } from './core.js'
+import { runMcpServer } from './mcp.js'
 
 const argv = process.argv.slice(2)
 
@@ -16,7 +17,7 @@ function requiredOption(name) {
 }
 
 function usage() {
-  return `Task Passport 0.1.1
+  return `Task Passport 0.2.0
 
 Usage:
   task-passport list [--uking <path>]
@@ -25,6 +26,7 @@ Usage:
   task-passport new --title <text> --goal <text> [--current-state <text>] [--next-step <text>]
   task-passport checkpoint --file <state.json> --expected-version <n>
   task-passport doctor [--uking <path>]
+  task-passport mcp [--uking <path>]
 
 stdout is JSON except for the prompt command. Long state must go through --file.`
 }
@@ -36,7 +38,15 @@ async function main() {
     return
   }
   if (command === '--version' || command === '-v') {
-    console.log('0.1.1')
+    console.log('0.2.0')
+    return
+  }
+
+  if (command === 'mcp') {
+    await runMcpServer({
+      ukingExecutable: option('--uking'),
+      harness: process.env.TASK_PASSPORT_HARNESS || 'mcp',
+    })
     return
   }
 
