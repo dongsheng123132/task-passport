@@ -1,6 +1,6 @@
 {
   "name": "task-passport",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Carry durable task state across AI harnesses. Includes a CLI and a DeepSeek Harness bundle.",
   "type": "module",
   "main": "index.js",

@@ -18,6 +18,8 @@ test('MCP exposes the same four passport actions to any harness', async () => {
 
   const listed = await handle(request('tools/list'))
   assert.deepEqual(listed.tools.map((tool) => tool.name), passportTools.map((tool) => tool.name))
+  assert.equal(listed.tools.find((tool) => tool.name === 'task_passport_list').annotations.readOnlyHint, true)
+  assert.equal(listed.tools.find((tool) => tool.name === 'task_passport_checkpoint').annotations.readOnlyHint, false)
 
   const opened = await handle(request('tools/call', {
     name: 'task_passport_open',
@@ -48,4 +50,3 @@ test('MCP negotiates initialization and returns tool errors without killing the 
   assert.equal(failed.isError, true)
   assert.match(failed.content[0].text, /offline/)
 })
-

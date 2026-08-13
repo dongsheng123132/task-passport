@@ -71,8 +71,8 @@ task-passport checkpoint --file next-state.json --expected-version 4
 同一个 npm 包也提供标准输入输出 MCP 服务。Claude Code 和 Codex 只是薄适配器，仍然读写同一本护照：
 
 ```powershell
-claude mcp add --scope user task-passport -- npx --yes task-passport@0.2.0 mcp
-codex mcp add task-passport -- npx --yes task-passport@0.2.0 mcp
+claude mcp add --scope user task-passport -- npx --yes task-passport@0.2.1 mcp
+codex mcp add task-passport -- npx --yes task-passport@0.2.1 mcp
 ```
 
 接入后，两边都能看到相同的四个工具：`task_passport_list`、`task_passport_open`、`task_passport_new`、`task_passport_checkpoint`。如果是 U-King 便携版，可给 MCP 进程设置 `TASK_PASSPORT_UKING` 指向实际 exe。

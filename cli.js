@@ -17,7 +17,7 @@ function requiredOption(name) {
 }
 
 function usage() {
-  return `Task Passport 0.2.0
+  return `Task Passport 0.2.1
 
 Usage:
   task-passport list [--uking <path>]
@@ -38,7 +38,7 @@ async function main() {
     return
   }
   if (command === '--version' || command === '-v') {
-    console.log('0.2.0')
+    console.log('0.2.1')
     return
   }
 

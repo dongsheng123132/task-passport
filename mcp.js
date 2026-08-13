@@ -2,18 +2,20 @@
 import { createInterface } from 'node:readline'
 import { createPassportClient } from './core.js'
 
-const SERVER_VERSION = '0.2.0'
+const SERVER_VERSION = '0.2.1'
 const SUPPORTED_PROTOCOLS = new Set(['2025-06-18', '2025-03-26', '2024-11-05'])
 
 export const passportTools = [
   {
     name: 'task_passport_list',
     description: 'List task passports without loading their full bodies. Use this to discover or resolve an exact passport id. Read-only.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     inputSchema: { type: 'object', additionalProperties: false, properties: {} },
   },
   {
     name: 'task_passport_open',
     description: 'Open exactly one task passport. Returns durable state, bounded context, and the version required for a safe checkpoint. Read-only.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -26,6 +28,7 @@ export const passportTools = [
   {
     name: 'task_passport_new',
     description: 'Create one durable task passport for one objective. A passport can span multiple sessions and harnesses.',
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -41,6 +44,7 @@ export const passportTools = [
   {
     name: 'task_passport_checkpoint',
     description: 'Checkpoint changed durable state. A stale expected_version is rejected instead of silently overwriting another harness.',
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     inputSchema: {
       type: 'object',
       additionalProperties: false,
