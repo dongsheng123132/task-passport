@@ -35,6 +35,8 @@ dsh --profile passport web
     allowCheckpoint: true
 ```
 
+Windows 上会自动发现 U-King 默认安装目录 `%LOCALAPPDATA%\u-king\u-king-mini.exe`；便携版或自定义目录才需要上面的显式配置。
+
 也可以在启动 DSH 前设置：
 
 ```powershell

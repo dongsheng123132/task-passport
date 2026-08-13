@@ -20,6 +20,8 @@ function executableCandidates(explicit) {
     const local = process.env.LOCALAPPDATA
     if (local) {
       candidates.push(
+        join(local, 'u-king', 'u-king-mini.exe'),
+        join(local, 'u-king', 'U-King.exe'),
         join(local, 'U-King', 'U-King.exe'),
         join(local, 'Programs', 'U-King', 'U-King.exe'),
       )
