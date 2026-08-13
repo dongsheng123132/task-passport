@@ -119,6 +119,55 @@ function summary(state) {
   }
 }
 
+function boundedText(value, limit = 700) {
+  const text = typeof value === 'string' ? value.trim() : ''
+  return text.length <= limit ? text : `${text.slice(0, limit - 1)}…`
+}
+
+function lines(items, render, limit, newest = false) {
+  const values = Array.isArray(items) ? items : []
+  return (newest ? values.slice(-limit) : values.slice(0, limit)).map(render).filter(Boolean)
+}
+
+export function compilePassportContext(state) {
+  const verifiedFacts = Array.isArray(state.facts)
+    ? state.facts.filter((fact) => fact?.verified === true)
+    : []
+  const facts = lines(
+    verifiedFacts,
+    (fact) => `- ✓ ${boundedText(fact.claim)}${fact.source ? ` (来源：${boundedText(fact.source, 300)})` : ''}`,
+    12,
+    true,
+  )
+  const decisions = lines(
+    state.decisions,
+    (decision) => `- ${boundedText(decision.what)}${decision.why ? ` — ${boundedText(decision.why, 400)}` : ''}`,
+    8,
+    true,
+  )
+  const artifacts = lines(state.artifacts, (artifact) => `- ${boundedText(artifact, 500)}`, 12, true)
+  const nextSteps = lines(state.next_steps, (step) => `- ${boundedText(step)}`, 10)
+
+  return [
+    `## 任务护照 ${boundedText(state.id, 120)}`,
+    '',
+    `**目标**：${boundedText(state.goal) || '未记录'}`,
+    `**当前状态**：${boundedText(state.current_state, 1_200) || '未记录'}`,
+    '',
+    '**已验证事实**：',
+    ...(facts.length ? facts : ['- 暂无']),
+    '',
+    '**已定决策**：',
+    ...(decisions.length ? decisions : ['- 暂无']),
+    '',
+    '**产物引用**：',
+    ...(artifacts.length ? artifacts : ['- 暂无']),
+    '',
+    '**下一步**：',
+    ...(nextSteps.length ? nextSteps : ['- 暂无']),
+  ].join('\n')
+}
+
 function exactPassportId(raw) {
   const value = typeof raw === 'string' ? raw.trim() : ''
   if (!value) throw new Error('passport_id is required')
@@ -141,31 +190,68 @@ export function generatePassportId() {
   return `TP-${body.slice(0, 4)}-${body.slice(4, 8)}`
 }
 
-export function createPassportClient(options = {}) {
+export function createUkingPassportProvider(options = {}) {
   const actionRunner = options.actionRunner ?? ((actionId, input, actionOptions) =>
     runUkingAction(actionId, input, { ...options, ...actionOptions }))
 
+  return {
+    kind: 'uking-action',
+    async list() {
+      const result = await actionRunner('runtime.origin.inspect', {}, { write: false })
+      return Array.isArray(result?.tasks) ? result.tasks : []
+    },
+    async open(passportId) {
+      const result = await actionRunner(
+        'runtime.origin.inspect',
+        { task_id: passportId, compiled: true },
+        { write: false },
+      )
+      const state = Array.isArray(result?.tasks) ? result.tasks[0] : null
+      if (!state) return null
+      const { compiled_context: compiledContext = '', ...rawState } = state
+      return { state: rawState, compiledContext }
+    },
+    async save(state, expectedVersion) {
+      const result = await actionRunner(
+        'runtime.origin.save',
+        { state, expected_version: expectedVersion },
+        { write: true },
+      )
+      if (!result?.state) throw new Error('U-King did not return the saved task state')
+      return result.state
+    },
+  }
+}
+
+function assertProvider(provider) {
+  for (const method of ['list', 'open', 'save']) {
+    if (typeof provider?.[method] !== 'function') {
+      throw new Error(`Task Passport provider must implement ${method}()`)
+    }
+  }
+  return provider
+}
+
+export function createPassportClient(options = {}) {
+  const provider = assertProvider(options.provider ?? createUkingPassportProvider(options))
+
   async function list() {
-    const result = await actionRunner('runtime.origin.inspect', {}, { write: false })
-    const states = Array.isArray(result?.tasks) ? result.tasks : []
+    const states = await provider.list()
+    if (!Array.isArray(states)) throw new Error('Task Passport provider list() must return an array')
     return { count: states.length, passports: states.map(summary) }
   }
 
   async function open(passportId) {
     const exactId = exactPassportId(passportId)
-    const result = await actionRunner(
-      'runtime.origin.inspect',
-      { task_id: exactId, compiled: true },
-      { write: false },
-    )
-    const state = Array.isArray(result?.tasks) ? result.tasks[0] : null
-    if (!state) throw new Error(`Task passport ${exactId} was not found`)
-    const { compiled_context: compiledContext = '', ...rawState } = state
+    const record = await provider.open(exactId)
+    const rawState = record?.state
+    if (!rawState) throw new Error(`Task passport ${exactId} was not found`)
+    if (rawState.id !== exactId) throw new Error(`Task Passport provider returned the wrong id for ${exactId}`)
     return {
       passport_id: rawState.id,
       state_version: Number(rawState.version || 0),
       state: rawState,
-      compiled_context: compiledContext,
+      compiled_context: record.compiledContext || compilePassportContext(rawState),
       handoff_prompt: handoffPrompt(rawState.id),
     }
   }
@@ -179,13 +265,10 @@ export function createPassportClient(options = {}) {
       throw new Error('expected_version must be a non-negative integer')
     }
     const next = { ...state, harness: options.harness ?? 'task-passport' }
-    const result = await actionRunner(
-      'runtime.origin.save',
-      { state: next, expected_version: expectedVersion },
-      { write: true },
-    )
-    const saved = result?.state
-    if (!saved) throw new Error('U-King did not return the saved task state')
+    const saved = await provider.save(next, expectedVersion)
+    if (!saved || typeof saved !== 'object') {
+      throw new Error('Task Passport provider save() must return the saved state')
+    }
     return {
       passport_id: saved.id,
       state_version: Number(saved.version || 0),
@@ -226,7 +309,7 @@ export function createPassportClient(options = {}) {
     return await checkpoint(state, 0)
   }
 
-  return { list, open, checkpoint, create }
+  return { provider: provider.kind || 'custom', list, open, checkpoint, create }
 }
 
 export function defaultUkingHints() {

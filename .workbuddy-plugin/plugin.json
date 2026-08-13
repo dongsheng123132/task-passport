@@ -1,6 +1,6 @@
 {
   "name": "task-passport",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Carry verified task state across WorkBuddy, Claude Code, Codex, and DeepSeek Harness without copying chat history.",
   "author": {
     "name": "2Origin"

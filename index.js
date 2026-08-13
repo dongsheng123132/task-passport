@@ -1,12 +1,14 @@
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { createPassportClient } from './core.js'
+import { createDirectoryPassportProvider } from './store.js'
 
 export const name = 'task-passport'
 export const inject = ['tools', 'systemPrompt']
 
 export const Config = z.object({
   ukingExecutable: z.string().default(''),
+  storeDirectory: z.string().default(''),
   allowCheckpoint: z.boolean().default(true),
 })
 
@@ -50,6 +52,9 @@ const CHECKPOINT_SCHEMA = {
 export function apply(ctx, config) {
   const client = createPassportClient({
     ukingExecutable: config.ukingExecutable || undefined,
+    provider: config.storeDirectory
+      ? createDirectoryPassportProvider({ directory: config.storeDirectory })
+      : undefined,
     harness: 'deepseek-harness',
   })
 
