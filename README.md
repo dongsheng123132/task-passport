@@ -11,7 +11,7 @@
 - `open`：读取目标、当前状态、验证过的事实、决策理由和下一步。
 - `checkpoint`：工作完成后写回；带状态版本，过期写入直接冲突，不静默覆盖。
 - 同一个包既是通用 CLI，也是 DeepSeek Harness 原生 bundle。
-- 状态与并发门禁复用 U-King Action Core；插件本身是可装可卸的薄适配器。
+- 状态可由 U-King Action Core、本地目录参考存储或第三方 Provider 托管；插件本身是可装可卸的薄适配器。
 
 它不做两件事：不复制上一位 AI 的聊天记录；不把“刚改过的任务”猜成当前任务。
 
@@ -20,7 +20,7 @@
 从 GitHub 安装（纯 JavaScript，仓库已包含运行产物，不需要 `prepare` 构建权限）：
 
 ```sh
-dsh plugin --profile web add task-passport@0.2.1
+dsh plugin --profile web add task-passport@0.2.2
 dsh --profile web --dump-config
 dsh web
 ```
@@ -34,6 +34,7 @@ dsh web
   name: task-passport
   config:
     ukingExecutable: 'C:/path/to/U-King.exe'
+    # 或者不依赖 U-King：storeDirectory: 'D:/task-passports'
     allowCheckpoint: true
 ```
 
@@ -68,13 +69,43 @@ task-passport checkpoint --file next-state.json --expected-version 4
 
 长状态只接受文件，不塞命令行参数。stdout 除 `prompt` 外只输出 JSON，适合 Agent 与脚本调用。
 
+## 不依赖 U-King 的本地存储
+
+v0.2.2 提供开放 Provider 合约和本地目录参考实现。同一台机器上的所有 Harness 只要指向同一个目录，就会读写同一本护照：
+
+```powershell
+task-passport list --store D:\TaskPassports
+task-passport new --store D:\TaskPassports --title "发布插件" --goal "完成 WorkBuddy 发布"
+
+$env:TASK_PASSPORT_STORE = 'D:\TaskPassports'
+task-passport mcp
+```
+
+本地存储为每本护照使用独立 JSON 文件、跨进程锁、同目录原子替换和 `expected_version` 冲突检测。它不会将密钥写入护照。
+
+**一个任务只能选一个权威存储。** 不要让 Claude 指向本地目录、DSH 却仍指向 U-King，否则会形成两本同名护照。
+
+第三方看板可直接实现三个方法：
+
+```js
+import { createPassportClient } from 'task-passport/core'
+
+const provider = {
+  async list() {},                         // 返回 state[]
+  async open(passportId) {},               // 返回 { state, compiledContext? } | null
+  async save(state, expectedVersion) {},   // 返回保存后的 state；过期版本必须拒绝
+}
+
+const client = createPassportClient({ provider, harness: 'my-dashboard' })
+```
+
 ## Claude Code / Codex
 
 同一个 npm 包也提供标准输入输出 MCP 服务。Claude Code 和 Codex 只是薄适配器，仍然读写同一本护照：
 
 ```powershell
-claude mcp add --scope user task-passport -- npx --yes task-passport@0.2.1 mcp
-codex mcp add task-passport -- npx --yes task-passport@0.2.1 mcp
+claude mcp add --scope user task-passport -- npx --yes task-passport@0.2.2 mcp
+codex mcp add task-passport -- npx --yes task-passport@0.2.2 mcp
 ```
 
 接入后，两边都能看到相同的四个工具：`task_passport_list`、`task_passport_open`、`task_passport_new`、`task_passport_checkpoint`。如果是 U-King 便携版，可给 MCP 进程设置 `TASK_PASSPORT_UKING` 指向实际 exe。
@@ -114,7 +145,7 @@ codebuddy --plugin-dir /path/to/task-passport
 
 [Cordiverse 的论文](https://github.com/cordiverse/paper)说明了动态插件需要可卸载的副作用和可重绑定的依赖。任务护照采用同样的边界：DSH 插件可以随时装卸，任务状态放在插件生命周期之外长期存在。插件消失，护照不能跟着消失。
 
-Task Passport 当前把 U-King 的 `2origin/0.1` 对象状态作为权威存储。公开产品名是 Task Passport；2Origin 是底层状态模型，不要求用户理解。
+U-King 是默认 Provider 和官方参考看板，但不是协议前置条件。公开产品名是 Task Passport；`2origin/0.1` 是底层状态模型，不要求用户理解。
 
 ## 开发
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { createInterface } from 'node:readline'
 import { createPassportClient } from './core.js'
+import { createDirectoryPassportProvider } from './store.js'
 
-const SERVER_VERSION = '0.2.1'
+const SERVER_VERSION = '0.2.2'
 const SUPPORTED_PROTOCOLS = new Set(['2025-06-18', '2025-03-26', '2024-11-05'])
 
 export const passportTools = [
@@ -72,8 +73,12 @@ function toolError(error) {
 }
 
 export function createMcpRequestHandler(options = {}) {
+  const storeDirectory = options.storeDirectory || process.env.TASK_PASSPORT_STORE
   const client = options.client ?? createPassportClient({
     ukingExecutable: options.ukingExecutable,
+    provider: options.provider ?? (storeDirectory
+      ? createDirectoryPassportProvider({ directory: storeDirectory })
+      : undefined),
     harness: options.harness || process.env.TASK_PASSPORT_HARNESS || 'mcp',
   })
 

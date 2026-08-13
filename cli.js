@@ -2,6 +2,7 @@
 import { readFile } from 'node:fs/promises'
 import { createPassportClient, defaultUkingHints, handoffPrompt } from './core.js'
 import { runMcpServer } from './mcp.js'
+import { createDirectoryPassportProvider } from './store.js'
 
 const argv = process.argv.slice(2)
 
@@ -17,18 +18,31 @@ function requiredOption(name) {
 }
 
 function usage() {
-  return `Task Passport 0.2.1
+  return `Task Passport 0.2.2
 
 Usage:
-  task-passport list [--uking <path>]
-  task-passport open <TP-ID> [--uking <path>]
+  task-passport list [--uking <path> | --store <directory>]
+  task-passport open <TP-ID> [--uking <path> | --store <directory>]
   task-passport prompt <TP-ID>
-  task-passport new --title <text> --goal <text> [--current-state <text>] [--next-step <text>]
-  task-passport checkpoint --file <state.json> --expected-version <n>
-  task-passport doctor [--uking <path>]
-  task-passport mcp [--uking <path>]
+  task-passport new --title <text> --goal <text> [--current-state <text>] [--next-step <text>] [--store <directory>]
+  task-passport checkpoint --file <state.json> --expected-version <n> [--store <directory>]
+  task-passport doctor [--uking <path> | --store <directory>]
+  task-passport mcp [--uking <path> | --store <directory>]
 
 stdout is JSON except for the prompt command. Long state must go through --file.`
+}
+
+function storeDirectory() {
+  return option('--store') || process.env.TASK_PASSPORT_STORE
+}
+
+function clientOptions(harness) {
+  const directory = storeDirectory()
+  return {
+    ukingExecutable: option('--uking'),
+    provider: directory ? createDirectoryPassportProvider({ directory }) : undefined,
+    harness,
+  }
 }
 
 async function main() {
@@ -38,22 +52,22 @@ async function main() {
     return
   }
   if (command === '--version' || command === '-v') {
-    console.log('0.2.1')
+    console.log('0.2.2')
     return
   }
 
   if (command === 'mcp') {
     await runMcpServer({
       ukingExecutable: option('--uking'),
+      storeDirectory: storeDirectory(),
       harness: process.env.TASK_PASSPORT_HARNESS || 'mcp',
     })
     return
   }
 
-  const client = createPassportClient({
-    ukingExecutable: option('--uking'),
-    harness: process.env.TASK_PASSPORT_HARNESS || 'task-passport-cli',
-  })
+  const client = createPassportClient(clientOptions(
+    process.env.TASK_PASSPORT_HARNESS || 'task-passport-cli',
+  ))
 
   if (command === 'list') {
     console.log(JSON.stringify(await client.list()))
@@ -88,7 +102,7 @@ async function main() {
   if (command === 'doctor') {
     try {
       const result = await client.list()
-      console.log(JSON.stringify({ ready: true, passport_count: result.count }))
+      console.log(JSON.stringify({ ready: true, provider: client.provider, passport_count: result.count }))
     } catch (error) {
       console.log(JSON.stringify({ ready: false, error: error.message, hints: defaultUkingHints() }))
       process.exitCode = 1
