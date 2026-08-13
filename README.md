@@ -79,6 +79,27 @@ codex mcp add task-passport -- npx --yes task-passport@0.2.1 mcp
 
 接入后，两边都能看到相同的四个工具：`task_passport_list`、`task_passport_open`、`task_passport_new`、`task_passport_checkpoint`。如果是 U-King 便携版，可给 MCP 进程设置 `TASK_PASSPORT_UKING` 指向实际 exe。
 
+## WorkBuddy / CodeBuddy
+
+仓库同时是一个 WorkBuddy 第三方插件市场：
+
+```sh
+codebuddy plugin marketplace add dongsheng123132/task-passport
+codebuddy plugin install task-passport@task-passport-marketplace
+```
+
+安装后重载插件。WorkBuddy 会同时得到 Task Passport Skill 和同一套 MCP 工具；不会另造一份状态。本地开发验证可用：
+
+```sh
+codebuddy --plugin-dir /path/to/task-passport
+```
+
+## 长文与项目交接
+
+长文可以稳定交接，但护照不携带整篇正文。正文放在 Git、共享目录或对象存储；护照只记录精确路径或 URL、revision/hash、当前章节、已验证事实和下一步。这比复制整段对话更稳定，也不会用无关历史挤占下一个模型的上下文。
+
+任务护照当前不搬运整个项目。项目文件仍由 Git / 共享工作区 / artifact store 搬运，护照负责指向精确版本并携带状态。后续的 Project Passport 会在这个边界上补充仓库 revision、运行时、插件需求和目标 Harness 就绪报告，但不保存密钥值。
+
 ## 三个概念
 
 | 概念 | 生命周期 | 示例 |

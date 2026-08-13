@@ -1,0 +1,27 @@
+{
+  "name": "task-passport-marketplace",
+  "owner": {
+    "name": "2Origin"
+  },
+  "description": "Cross-harness continuity plugins from the Task Passport project.",
+  "version": "0.2.1",
+  "plugins": [
+    {
+      "name": "task-passport",
+      "source": {
+        "source": "github",
+        "repo": "dongsheng123132/task-passport"
+      },
+      "description": "Continue the same verified task across WorkBuddy, Claude Code, Codex, and DeepSeek Harness.",
+      "version": "0.2.1",
+      "author": {
+        "name": "2Origin"
+      },
+      "homepage": "https://github.com/dongsheng123132/task-passport",
+      "repository": "https://github.com/dongsheng123132/task-passport",
+      "license": "MIT",
+      "keywords": ["task-handoff", "agent-memory", "cross-harness", "mcp", "workbuddy"],
+      "category": "Developer Tools"
+    }
+  ]
+}
