@@ -24,7 +24,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test test/core.test.mjs test/mcp.test.mjs test/plugin-manifests.test.mjs test/store.test.mjs",
     "test:e2e:uking": "node test/e2e-uking.mjs",
     "check": "node --check core.js && node --check store.js && node --check index.js && node --check mcp.js && node --check cli.js",
     "pack:check": "npm pack --dry-run"
