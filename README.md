@@ -1,5 +1,10 @@
 # Task Passport · 任务护照
 
+[![CI](https://github.com/dongsheng123132/task-passport/actions/workflows/ci.yml/badge.svg)](https://github.com/dongsheng123132/task-passport/actions/workflows/ci.yml)
+[![MIT 许可证](https://img.shields.io/github/license/dongsheng123132/task-passport)](LICENSE)
+[![Node.js 20+](https://img.shields.io/badge/Node.js-%E2%89%A520-339933?logo=nodedotjs&logoColor=white)](package.json)
+[![DeepSeek Harness plugin](https://img.shields.io/badge/DeepSeek_Harness-plugin-0969da)](https://github.com/topics/dsh-plugin)
+
 让一个任务带着“当前世界状态”在 DeepSeek Harness、Claude Code、Codex 等 AI Harness 之间接力，不搬运聊天记录。
 
 > 一个项目可以有多个任务护照；一个任务护照可以经历多个 Harness 和多个会话。
