@@ -23,10 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Deliberately no registry-url: it writes an .npmrc that expects NODE_AUTH_TOKEN,
+      # and trusted publishing has no token to put there. An empty one authenticates
+      # as nobody, which fails later and looks like a permissions problem.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org
 
       # Trusted publishing needs a recent npm; the runner's bundled one may predate it.
       - run: npm install -g npm@latest
@@ -47,15 +49,17 @@ jobs:
       # The published tarball is what users actually get, so assert the two files that
       # make this release meaningful are inside it. 0.2.2 shipped without them and the
       # package could not hand anything off — that failure is what this guard is for.
+      # Read the actual tarball rather than npm's --json report: the report's shape has
+      # changed between npm versions, and a guard that breaks when the tool it inspects
+      # is upgraded is a guard you will end up deleting.
       - name: The tarball must contain the code that does the work
         run: |
-          npm pack --dry-run --json > /tmp/pack.json
-          node -e "
-            const files = require('/tmp/pack.json')[0].files.map((f) => f.path)
-            const required = ['taskpack.js', 'bag.js', 'cli.js', 'mcp.js']
-            const missing = required.filter((f) => !files.includes(f))
-            if (missing.length) { console.error('missing from tarball: ' + missing.join(', ')); process.exit(1) }
-            console.log('tarball ok: ' + files.length + ' files')
-          "
+          TGZ="$(npm pack --silent | tail -1)"
+          tar -tzf "$TGZ" | sed 's|^package/||' | sort > /tmp/files.txt
+          for f in taskpack.js bag.js cli.js mcp.js core.js store.js; do
+            grep -qx "$f" /tmp/files.txt || { echo "missing from tarball: $f" >&2; exit 1; }
+          done
+          echo "tarball ok: $(wc -l < /tmp/files.txt) files"
+          rm -f "$TGZ"
 
       - run: npm publish --provenance --access public
