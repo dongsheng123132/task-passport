@@ -27,16 +27,27 @@ test('list exposes passport vocabulary without leaking action implementation', a
   assert.equal(calls[0][0], 'runtime.origin.inspect')
 })
 
-test('open is exact and returns bounded handoff context', async () => {
+test('open is exact and renders handoff context locally, never from the provider', async () => {
   const client = createPassportClient({
     actionRunner: async (_action, input) => ({
       tasks: input.task_id === 'TP-7K4M-9D2Q'
-        ? [{ id: input.task_id, version: 4, goal: 'g', current_state: 's', compiled_context: 'bounded context' }]
+        ? [{
+            id: input.task_id,
+            version: 4,
+            goal: 'g',
+            current_state: 's',
+            facts: [{ claim: '这条只在原机成立', verified: true, needs_reverify: true }],
+            // A provider may ship prose of its own. It must not become what the model
+            // reads: the unverified-fact warning has to be applied by this side.
+            compiled_context: 'bounded context',
+          }]
         : [],
     }),
   })
   const opened = await client.open('TP-7K4M-9D2Q')
-  assert.equal(opened.compiled_context, 'bounded context')
+  assert.notEqual(opened.compiled_context, 'bounded context', 'provider prose must not win')
+  assert.match(opened.compiled_context, /TP-7K4M-9D2Q/)
+  assert.match(opened.compiled_context, /⚠️ 这条只在原机成立/, 'the local renderer must flag it')
   assert.equal(opened.state.compiled_context, undefined)
   assert.match(opened.handoff_prompt, /TP-7K4M-9D2Q/)
   await assert.rejects(() => client.open('TP-NOT-FOUND'), /not found/)

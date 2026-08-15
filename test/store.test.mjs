@@ -67,7 +67,7 @@ test('two directory providers reject one stale concurrent checkpoint', async (t)
   assert.equal((await first.open(created.passport_id)).state_version, 2)
 })
 
-test('compiled context includes verified facts but not unverified claims', () => {
+test('compiled context separates proven facts from unproven ones instead of hiding them', () => {
   const context = compilePassportContext({
     id: 'TP-7K4M-9D2Q',
     goal: '交接长文',
@@ -75,14 +75,29 @@ test('compiled context includes verified facts but not unverified claims', () =>
     facts: [
       { claim: '第三章已校对', source: 'chapter-3.md#sha256', verified: true },
       { claim: '读者一定喜欢', verified: false },
+      { claim: 'image2 渠道在本机可用', verified: true, needs_reverify: true, scope: 'machine' },
     ],
     decisions: [],
     artifacts: ['chapter-3.md#sha256'],
     next_steps: ['继续第四章'],
   })
-  assert.match(context, /第三章已校对/)
-  assert.doesNotMatch(context, /读者一定喜欢/)
+  assert.match(context, /✓ 第三章已校对/)
+  // Dropping an unproven claim hides its existence from the next model. It must be
+  // shown, but never with a ✓, and under a heading that says not to rely on it.
+  assert.match(context, /⚠️ 读者一定喜欢/)
+  assert.match(context, /⚠️ image2 渠道在本机可用/, 'a re-verify flag outranks verified:true')
+  assert.match(context, /不要当作事实使用/)
+  assert.doesNotMatch(context, /✓ 读者一定喜欢/)
+  assert.doesNotMatch(context, /✓ image2 渠道在本机可用/)
   assert.match(context, /chapter-3\.md#sha256/)
+})
+
+test('compiled context reports how many entries it withheld', () => {
+  const facts = Array.from({ length: 20 }, (_, index) => ({ claim: `事实 ${index}`, verified: true }))
+  const context = compilePassportContext({ id: 'TP-7K4M-9D2Q', goal: 'g', current_state: 's', facts })
+  // A silently capped list reads as "that was all of it" — the one thing a handoff
+  // must never imply.
+  assert.match(context, /另有 8 条未显示（共 20 条）/)
 })
 
 test('directory provider never steals a stale-looking lock from a live process', async (t) => {

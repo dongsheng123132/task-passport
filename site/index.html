@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TaskPack — a portable container for unfinished work</title>
+<meta name="description" content="An open format for handing unfinished work between AI agents, machines, people and vendors — including the rule that a verified fact loses its checkmark at the machine boundary.">
+<meta property="og:title" content="TaskPack">
+<meta property="og:description" content="A2A moves work between agents that are both alive. TaskPack moves work when the sender is gone.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://taskpack.org">
+<link rel="alternate" type="application/json" href="/a2a/ext/taskpack/v1" title="A2A extension descriptor">
+<style>
+:root{
+  --bg:#fbfaf8; --fg:#1a1917; --dim:#6b6862; --line:#e2ded7;
+  --accent:#8a5a2b; --code-bg:#f3f0ea; --ok:#2f6f4f; --warn:#9a3d2f;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#14140f; --fg:#e8e5df; --dim:#9a968d; --line:#2c2b26;
+         --accent:#d9a066; --code-bg:#1e1d18; --ok:#7fbf9a; --warn:#e08b76; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:16px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans SC","PingFang SC",sans-serif;
+  -webkit-font-smoothing:antialiased}
+main{max-width:47rem;margin:0 auto;padding:4rem 1.5rem 6rem}
+h1{font-size:2.6rem;line-height:1.1;letter-spacing:-.02em;margin:0 0 .4rem}
+h1 small{display:block;font-size:.95rem;font-weight:400;color:var(--dim);letter-spacing:0;margin-top:.9rem}
+h2{font-size:1.15rem;letter-spacing:-.01em;margin:3.2rem 0 .8rem;padding-top:1.4rem;border-top:1px solid var(--line)}
+h3{font-size:1rem;margin:1.8rem 0 .5rem}
+p{margin:.9rem 0}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 35%,transparent)}
+a:hover{border-bottom-color:var(--accent)}
+code,pre{font-family:ui-monospace,SFMono-Regular,"Cascadia Code",Consolas,monospace}
+code{background:var(--code-bg);padding:.12em .38em;border-radius:4px;font-size:.9em}
+pre{background:var(--code-bg);padding:1rem 1.1rem;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.6;border:1px solid var(--line)}
+pre code{background:none;padding:0;font-size:1em}
+.lede{font-size:1.2rem;line-height:1.55;color:var(--fg)}
+.rule{border-left:3px solid var(--accent);padding:.1rem 0 .1rem 1.1rem;margin:1.6rem 0;font-size:1.05rem}
+.dim{color:var(--dim)}
+table{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.55rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--dim);font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+.yes{color:var(--ok);font-weight:600}
+.no{color:var(--dim)}
+.pill{display:inline-block;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;
+  border:1px solid var(--line);border-radius:99px;padding:.2rem .6rem;color:var(--dim);margin-right:.4rem}
+footer{margin-top:4.5rem;padding-top:1.4rem;border-top:1px solid var(--line);color:var(--dim);font-size:.85rem}
+.zh{color:var(--dim);font-size:.95rem}
+</style>
+</head>
+<body>
+<main>
+
+<h1>TaskPack
+  <small><span class="pill">taskpack/0.1 · draft</span><span class="pill">MIT</span>
+  A portable container for unfinished work.</small>
+</h1>
+
+<p class="lede">
+A2A moves work between agents that are <em>both alive</em>.
+<strong>TaskPack moves work when the sender is gone</strong> — across time, machines,
+people and vendors. It is a file, not a connection.
+</p>
+
+<p class="zh">
+中文：一个任务干到一半，怎么把它完整、可信地交给另一台机器、另一个人、另一家公司的 AI。
+它是一个文件，走微信、邮件、U 盘、git 都行。
+</p>
+
+<h2>The one rule that makes it worth having</h2>
+
+<div class="rule">
+A verified fact does not stay verified when it crosses a machine.
+</div>
+
+<p>
+“The build passes.” “The binary is at that path.” “The port is free.” All true on the
+sender’s machine. Shipped as <code>verified: true</code>, they make the receiving model act
+confidently on something false — <em>strictly worse than sending nothing at all</em>.
+</p>
+
+<p>
+So every fact declares a <code>scope</code>, and machine-scoped facts are sealed as unproven
+<strong>at pack time</strong>, recording <code>verified_on</code>: the machine where it <em>was</em>
+proven. Pack time, not landing time — a safety property that depends on the receiver
+running the right code is not a property of the format.
+</p>
+
+<h2>Two encodings, provably interchangeable</h2>
+
+<table>
+<tr><th></th><th><code>.taskpack</code></th><th><code>.taskpack.json</code></th></tr>
+<tr><td>Container</td><td>ZIP + <a href="https://www.rfc-editor.org/rfc/rfc8493">BagIt</a> 1.0</td><td>one JSON object</td></tr>
+<tr><td>Binary luggage</td><td>native</td><td>base64 inline</td></tr>
+<tr><td>Opens with no tooling</td><td class="no">no</td><td class="yes">yes</td></tr>
+<tr><td>Role</td><td>canonical</td><td>first contact</td></tr>
+</table>
+
+<p>
+The flat form is not a convenience. A colleague who installed <em>nothing</em> can drop it
+into their own AI and it works — and that is how every first handoff starts. Conformance
+check <code>C9</code> asserts the two round-trip byte-for-byte.
+</p>
+
+<h2>Try it</h2>
+
+<pre><code># pack it up
+taskpack pack TP-7K4M-9D2Q --out handoff.taskpack.json --flat \
+  --ask "cover image prompt|a Chinese prompt covering 750×400 and the palette" \
+  --check "this machine can generate images|bl image generate a test frame"
+
+# on the other machine, the other person, the other company
+taskpack land handoff.taskpack.json
+taskpack conformance handoff.taskpack.json   # exit 0 = conformant, 2 = not</code></pre>
+
+<p class="dim">
+Or just say it out loud to any agent with the plugin installed:
+<em>“接手这个包”</em> / <em>“land this pack”</em>.
+</p>
+
+<h2>Three refusals, enforced in the bytes</h2>
+
+<table>
+<tr><th>Refused</th><th>Why</th></tr>
+<tr><td>credentials</td><td>a pack never carries a secret value. No exceptions.</td></tr>
+<tr><td>chat transcripts</td><td>state travels; conversation does not.</td></tr>
+<tr><td>an ask with no <code>accept</code></td><td>a request with no acceptance rule is just another round of negotiation.</td></tr>
+</table>
+
+<h2>Instructions must not hide in data</h2>
+
+<p>
+Field-tested, and load-bearing. When the first cross-person handoff was sent as a file
+containing “how to use this file”, the receiving agent replied that it had read those
+lines as documentation and <strong>had not executed them</strong>. That is correct behaviour —
+treating file content as instructions is prompt injection.
+</p>
+
+<div class="rule">Sending is data. Installing is permission. Speaking is authorisation.</div>
+
+<h2>Relationship to A2A and MCP</h2>
+
+<table>
+<tr><th>Layer</th><th>Answers</th></tr>
+<tr><td>MCP</td><td>how an agent reaches tools and data</td></tr>
+<tr><td>A2A</td><td>how two live agents talk</td></tr>
+<tr><td><strong>TaskPack</strong></td><td><strong>what travels with the work when nobody is live</strong></td></tr>
+</table>
+
+<p>
+TaskPack registers as an A2A extension rather than a rival:
+<code>https://taskpack.org/a2a/ext/taskpack/v1</code>
+(<a href="/a2a/ext/taskpack/v1">descriptor</a>) — declared in an Agent Card, negotiated with
+the <code>A2A-Extensions</code> header. Nothing here requires A2A; a pack is a file and works
+with no connection at all.
+</p>
+
+<p class="dim">
+Not to be confused with the IETF <em>Agent Passport System</em> draft, which is
+complementary: APS binds <em>which agent may act, with what authority</em>. TaskPack carries
+<em>what the work is and what is proven about it</em>.
+</p>
+
+<h2>Conformance</h2>
+
+<p>
+A format becomes a protocol when a second implementation can prove itself. Ten checks,
+most written so a <em>wrong</em> pack fails — a suite whose checks cannot go red proves nothing.
+</p>
+
+<pre><code>npx taskpack conformance your-pack.taskpack</code></pre>
+
+<p>
+<strong>If you write an independent reader or writer, we want to hear about it</strong> — that is
+the milestone this format is measured against, not downloads.
+</p>
+
+<footer>
+<a href="/spec/0.1">Specification 0.1</a> ·
+<a href="/a2a/ext/taskpack/v1">A2A extension</a> ·
+<a href="https://github.com/dongsheng123132/task-passport">Reference implementation</a> ·
+<a href="https://www.npmjs.com/package/task-passport">npm</a>
+<br><br>
+TaskPack is the container. <a href="https://github.com/dongsheng123132/task-passport">Task Passport</a>
+is the durable record it is packed from. MIT licensed.
+</footer>
+
+</main>
+</body>
+</html>

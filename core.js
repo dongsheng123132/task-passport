@@ -124,21 +124,43 @@ function boundedText(value, limit = 700) {
   return text.length <= limit ? text : `${text.slice(0, limit - 1)}…`
 }
 
+// Truncation must announce itself. A silently capped list reads as "that was all
+// of it", which is the one thing a handoff must never imply.
 function lines(items, render, limit, newest = false) {
   const values = Array.isArray(items) ? items : []
-  return (newest ? values.slice(-limit) : values.slice(0, limit)).map(render).filter(Boolean)
+  const kept = newest ? values.slice(-limit) : values.slice(0, limit)
+  const rendered = kept.map(render).filter(Boolean)
+  const hidden = values.length - kept.length
+  if (hidden > 0) rendered.push(`- …另有 ${hidden} 条未显示（共 ${values.length} 条），需要时读护照原文`)
+  return rendered
+}
+
+function factLine(mark) {
+  return (fact) => {
+    if (!fact || typeof fact !== 'object' || !fact.claim) return ''
+    const notes = []
+    if (fact.source) notes.push(`来源：${boundedText(String(fact.source), 300)}`)
+    if (fact.verified_by) notes.push(`验证方：${boundedText(String(fact.verified_by), 80)}`)
+    if (fact.verified_on) notes.push(`曾验证于：${boundedText(String(fact.verified_on), 80)}`)
+    if (fact.scope) notes.push(`作用域：${boundedText(String(fact.scope), 40)}`)
+    return `- ${mark} ${boundedText(fact.claim)}${notes.length ? `（${notes.join('；')}）` : ''}`
+  }
 }
 
 export function compilePassportContext(state) {
-  const verifiedFacts = Array.isArray(state.facts)
-    ? state.facts.filter((fact) => fact?.verified === true)
-    : []
-  const facts = lines(
-    verifiedFacts,
-    (fact) => `- ✓ ${boundedText(fact.claim)}${fact.source ? ` (来源：${boundedText(fact.source, 300)})` : ''}`,
-    12,
-    true,
-  )
+  const allFacts = Array.isArray(state.facts) ? state.facts : []
+  const proven = []
+  const unproven = []
+  for (const fact of allFacts) {
+    if (!fact || typeof fact !== 'object') continue
+    // An unproven fact is never dropped. Dropping it hides its existence from the
+    // next model, which is worse than showing it flagged — it just never gets a ✓.
+    if (fact.verified === true && fact.needs_reverify !== true) proven.push(fact)
+    else unproven.push(fact)
+  }
+
+  const facts = lines(proven, factLine('✓'), 12, true)
+  const pending = lines(unproven, factLine('⚠️'), 12, true)
   const decisions = lines(
     state.decisions,
     (decision) => `- ${boundedText(decision.what)}${decision.why ? ` — ${boundedText(decision.why, 400)}` : ''}`,
@@ -156,6 +178,9 @@ export function compilePassportContext(state) {
     '',
     '**已验证事实**：',
     ...(facts.length ? facts : ['- 暂无']),
+    ...(pending.length
+      ? ['', '**尚未验证 / 需在本机重验**（不要当作事实使用；先自己验证，或向发起方确认）：', ...pending]
+      : []),
     '',
     '**已定决策**：',
     ...(decisions.length ? decisions : ['- 暂无']),
@@ -251,7 +276,10 @@ export function createPassportClient(options = {}) {
       passport_id: rawState.id,
       state_version: Number(rawState.version || 0),
       state: rawState,
-      compiled_context: record.compiledContext || compilePassportContext(rawState),
+      // One renderer, always local. A provider may ship its own prose, but the
+      // safety annotations (unverified facts, truncation notices) have to be applied
+      // by the code that actually feeds the model — not by the far side.
+      compiled_context: compilePassportContext(rawState),
       handoff_prompt: handoffPrompt(rawState.id),
     }
   }

@@ -1,3 +1,9 @@
 node_modules/
 *.tgz
 .DS_Store
+
+# 构建产物
+site/dist/
+
+# 内部战略判断（含杀死判据与收费边界），不进公开仓库
+docs/STRATEGY.md

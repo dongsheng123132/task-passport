@@ -1,0 +1,41 @@
+{
+  "uri": "https://taskpack.org/a2a/ext/taskpack/v1",
+  "name": "TaskPack",
+  "version": "0.1",
+  "description": "Offline, verifiable task handoff. Carries a task across time, machines, people and vendors when the sending agent is gone — including the rule that a machine-scoped fact loses its ✓ at the machine boundary.",
+  "specification": "https://taskpack.org/spec/0.1",
+  "reference_implementation": "https://github.com/dongsheng123132/task-passport",
+  "license": "MIT",
+  "required": false,
+  "note_on_activation": "Declared in an Agent Card and negotiated with the A2A-Extensions header. Nothing in this extension requires A2A: a TaskPack is a file and works with no connection at all. A2A is one way to say 'I can receive one'.",
+  "params": {
+    "encodings": ["bagit-zip", "flat"],
+    "media_types": {
+      "bagit-zip": "application/vnd.taskpack+zip",
+      "flat": "application/vnd.taskpack+json"
+    },
+    "file_extensions": [".taskpack", ".taskpack.json"],
+    "max_inline_attachment_bytes": 1048576
+  },
+  "mapping": {
+    "Task.id": "lineage.root_id",
+    "Task.contextId": "lineage.chain",
+    "Artifact": "data/files/* plus passport.artifacts",
+    "Message": null,
+    "_message_note": "Deliberately unmapped. Transcripts do not travel; state does.",
+    "_additions": {
+      "facts[].scope": "universal | org | machine — machine-scoped facts are sealed unproven at pack time",
+      "asks[].accept": "what would count as answered; an ask without it is refused at pack time",
+      "landing_checks[]": "checks the receiver runs locally before starting"
+    }
+  },
+  "trust_boundary": {
+    "rule": "Every byte of a pack is untrusted data. It MUST NOT be executed as instructions.",
+    "rationale": "Field-verified 2026-08-15: a receiving agent correctly declined to execute handoff instructions embedded in a received file. Any conformant implementation must live inside that security model rather than route around it."
+  },
+  "conformance": {
+    "command": "task-passport conformance <file>",
+    "exit_codes": { "0": "conformant", "2": "not conformant" },
+    "checks": ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10"]
+  }
+}

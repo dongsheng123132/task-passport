@@ -17,7 +17,8 @@ function statePath(directory, id) {
 
 async function readState(path, expectedId) {
   try {
-    const parsed = JSON.parse(await readFile(path, 'utf8'))
+    // Windows shells emit UTF-8 with a BOM by default; JSON.parse rejects it.
+    const parsed = JSON.parse((await readFile(path, 'utf8')).replace(/^﻿/, ''))
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
       throw new Error(`Invalid task passport state in ${path}`)
     }
@@ -123,11 +124,22 @@ export function createDirectoryPassportProvider(options = {}) {
     }
 
     const states = []
+    const skipped = []
     for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith('.json')) continue
       const id = entry.name.slice(0, -5)
       if (!/^[A-Za-z0-9_-]+$/.test(id)) continue
-      states.push(await readState(statePath(directory, id), id))
+      // A store directory collects unrelated .json files in practice — exchange
+      // files, scratch state, editor output. One of them must not blind the whole
+      // listing; open() still fails loudly for an exact id.
+      try {
+        states.push(await readState(statePath(directory, id), id))
+      } catch (error) {
+        skipped.push(`${entry.name} (${error.message})`)
+      }
+    }
+    if (skipped.length) {
+      process.emitWarning(`task passport store skipped ${skipped.length} unreadable file(s): ${skipped.join('; ')}`)
     }
     return states.filter(Boolean).sort((left, right) =>
       String(right.updated_at || '').localeCompare(String(left.updated_at || '')))
