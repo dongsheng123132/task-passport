@@ -15,10 +15,34 @@ const VERSION = '0.3.0'
  * treated as the flat JSON form, which also covers the retired `.tpx` files that
  * are already sitting in people's chat histories.
  */
-async function readPack(path) {
+async function readPack(path, options = {}) {
   const raw = await readFile(path)
   const isZip = raw.length > 1 && raw[0] === 0x50 && raw[1] === 0x4b
-  return isZip ? readZip(raw) : fromFlat(raw.toString('utf8').replace(/^﻿/, ''))
+  return isZip ? readZip(raw) : fromFlat(raw.toString('utf8').replace(/^﻿/, ''), options)
+}
+
+/**
+ * Judging a pack must not silently benefit from the reader's own repairs, so read it
+ * strictly first. If the file only parses once repaired, that IS the finding — report it
+ * as a failed check rather than passing the repaired version.
+ */
+async function conformanceReport(path) {
+  let repaired = null
+  let entries
+  try {
+    entries = await readPack(path, { strict: true })
+  } catch (error) {
+    if (!/not conformant as written/.test(error.message)) throw error
+    repaired = error.message
+    entries = await readPack(path)
+  }
+  const report = conformance(entries)
+  if (repaired) {
+    report.ok = false
+    report.total += 1
+    report.checks.unshift({ id: 'C0', requirement: '文件本身就合规，不需要读取方替它修复', ok: false, detail: repaired })
+  }
+  return report
 }
 
 /**
@@ -208,7 +232,7 @@ async function main() {
 
   if (command === 'conformance') {
     if (!argv[1] || argv[1].startsWith('-')) throw new Error('pack path is required')
-    const report = conformance(await readPack(argv[1]))
+    const report = await conformanceReport(argv[1])
     console.log(JSON.stringify(report))
     // A suite that cannot fail proves nothing, so a failing pack must fail the process.
     if (!report.ok) process.exitCode = 2

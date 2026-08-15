@@ -107,7 +107,7 @@ export function toFlat(entries) {
  * exist in the field, because a format that abandons its own first users teaches
  * everyone else not to adopt the next version either.
  */
-export function fromFlat(text) {
+export function fromFlat(text, { strict = false } = {}) {
   const raw = JSON.parse(String(text).replace(/^﻿/, ''))
   const passport = raw.taskpack ? raw.passport : legacyTpxToPassport(raw)
   if (!passport || typeof passport !== 'object') throw new Error('not a TaskPack: no passport object')
@@ -124,7 +124,32 @@ export function fromFlat(text) {
     return { name: String(attachment.name || ''), data }
   })
 
-  return assembleBag(passport, files)
+  const entries = assembleBag(passport, files)
+
+  /*
+   * Assembly runs the chokepoint, so a flat file that declared a machine-scoped fact
+   * still wearing a ✓ comes out of it repaired. That is the right thing to do when you
+   * are landing work — but it is the wrong thing to do when you are JUDGING a file,
+   * because a silently repaired pack gets reported as conformant when it never was.
+   *
+   * Found by testing on a clean machine (2026-08-16): a hand-edited flat pack carrying
+   * a false ✓ passed C6, because C6 was inspecting the repair rather than the file.
+   *
+   * So repair stays the default, and judging asks for `strict`.
+   */
+  if (strict) {
+    const declared = `${JSON.stringify(passport, null, 2)}\n`
+    const assembled = entries.get('data/passport.json').toString('utf8')
+    if (declared !== assembled) {
+      throw new Error(
+        'this pack is not conformant as written: reading it required repairing the passport ' +
+        '(most often a machine-scoped fact that was still marked verified). ' +
+        'Re-pack it with a conformant writer rather than relying on the reader to fix it.',
+      )
+    }
+  }
+
+  return entries
 }
 
 /** Map a retired `.tpx/0.1` file onto the current passport object. */

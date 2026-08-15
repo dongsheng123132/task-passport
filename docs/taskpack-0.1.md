@@ -204,6 +204,7 @@ task-passport conformance <file>     # exit 0 = conformant, 2 = not
 
 | id | requirement |
 | --- | --- |
+| C0 | the file is conformant **as written** — reading it required no repair |
 | C1 | BagIt structure and sha256 manifests agree |
 | C2 | `data/passport.json` parses |
 | C3 | `kind` is `handoff` or `receipt` |
@@ -217,6 +218,15 @@ task-passport conformance <file>     # exit 0 = conformant, 2 = not
 
 Most of these are written so that a *wrong* pack fails. A suite whose checks cannot go
 red proves nothing.
+
+`C0` deserves a note, because it was found the hard way on a clean machine. A reader that
+normalises what it loads — sealing a machine-scoped fact that arrived still marked
+verified — is doing the right thing when it is **landing** work, and the wrong thing when
+it is **judging** a file: the repaired version passes, and a pack that was never
+conformant gets reported as conformant. So an implementation MUST read strictly when
+judging: if the bytes as written do not already satisfy the rules, that is a failure of
+the pack, not a service the reader performs on its behalf. Landing stays lenient; judging
+does not.
 
 ## 7. Non-goals
 

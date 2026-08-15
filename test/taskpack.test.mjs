@@ -168,3 +168,27 @@ test('the flat form refuses an attachment too big to inline, and names it', () =
   })
   assert.throws(() => toFlat(bag), /大图\.png.*inline limit.*without --flat/s)
 })
+
+test('判定一个包时，不能享受读取方自己做的修复', () => {
+  // 干净机实测（2026-08-16）挖出来的：手改一个扁平包，塞进一条 machine 级但仍带 ✓ 的事实，
+  // C6 却是绿的——因为读取路径经过咽喉，事实被静默修复了，C6 看的是修复结果不是文件本身。
+  const entries = pack()
+  const flat = JSON.parse(toFlat(entries))
+  flat.passport.passport.facts = [
+    { claim: 'D:/tools/x.exe 可运行', scope: 'machine', verified: true, source: '本机跑过' },
+  ]
+  const text = JSON.stringify(flat, null, 2)
+
+  // 宽松读取（落地场景）：修好它，因为接收方本来就该安全
+  const repaired = fromFlat(text)
+  const { passport } = verifyBag(repaired)
+  assert.equal(passport.passport.facts[0].verified, false, '落地时应当修复')
+
+  // 严格读取（判定场景）：必须出声，不能替文件把分数挣了
+  assert.throws(() => fromFlat(text, { strict: true }), /not conformant as written/)
+})
+
+test('合规的包在严格模式下照样读得进去', () => {
+  const text = toFlat(pack())
+  assert.doesNotThrow(() => fromFlat(text, { strict: true }))
+})

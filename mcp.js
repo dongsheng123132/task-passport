@@ -142,10 +142,10 @@ export const passportTools = [
 ]
 
 /** Read a pack in either encoding. "PK" is a zip; anything else is the flat form. */
-async function readPack(path) {
+async function readPack(path, options = {}) {
   const raw = await readFile(path)
   const isZip = raw.length > 1 && raw[0] === 0x50 && raw[1] === 0x4b
-  return isZip ? readZip(raw) : fromFlat(raw.toString('utf8').replace(/^﻿/, ''))
+  return isZip ? readZip(raw) : fromFlat(raw.toString('utf8').replace(/^﻿/, ''), options)
 }
 
 function toolResult(value) {
@@ -291,7 +291,23 @@ export function createMcpRequestHandler(options = {}) {
           })
         }
         if (name === 'task_passport_conformance') {
-          return toolResult(conformance(await readPack(args.path)))
+          {
+            let repaired = null
+            let entries
+            try { entries = await readPack(args.path, { strict: true }) }
+            catch (error) {
+              if (!/not conformant as written/.test(error.message)) throw error
+              repaired = error.message
+              entries = await readPack(args.path)
+            }
+            const report = conformance(entries)
+            if (repaired) {
+              report.ok = false
+              report.total += 1
+              report.checks.unshift({ id: 'C0', requirement: '文件本身就合规，不需要读取方替它修复', ok: false, detail: repaired })
+            }
+            return toolResult(report)
+          }
         }
         throw new Error(`Unknown tool: ${name}`)
       } catch (error) {
