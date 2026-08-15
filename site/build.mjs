@@ -181,6 +181,12 @@ await writeFile(join(out, 'spec', '0.1.md'), spec)
 // The extension URI has no file extension, so Pages needs _headers to type it correctly.
 await copyFile(join(repo, 'docs', 'a2a-extension.json'), join(out, 'a2a', 'ext', 'taskpack', 'v1'))
 await copyFile(join(here, 'index.html'), join(out, 'index.html'))
+// The extension URI has no file extension, and a static host types files by extension,
+// so the identifier itself is served as octet-stream. Publish a .json twin at the same
+// content so machines that insist on the media type have somewhere correct to go. The
+// URI stays the identifier; this is only its fetchable form.
+await copyFile(join(repo, 'docs', 'a2a-extension.json'), join(out, 'a2a', 'ext', 'taskpack', 'v1.json'))
+
 
 await writeFile(join(out, '_headers'), `/a2a/ext/taskpack/v1
   Content-Type: application/json; charset=utf-8
