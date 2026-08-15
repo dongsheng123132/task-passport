@@ -139,7 +139,7 @@ const page = (title, body) => `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${title}</title>
-<link rel="alternate" type="text/markdown" href="/spec/0.1.md">
+<link rel="alternate" type="text/markdown" href="../0.1.md">
 <style>
 :root{--bg:#fbfaf8;--fg:#1a1917;--dim:#6b6862;--line:#e2ded7;--accent:#8a5a2b;--code-bg:#f3f0ea}
 @media (prefers-color-scheme:dark){:root{--bg:#14140f;--fg:#e8e5df;--dim:#9a968d;--line:#2c2b26;--accent:#d9a066;--code-bg:#1e1d18}}
@@ -165,7 +165,7 @@ nav{font-size:.85rem;color:var(--dim);margin-bottom:2.5rem}
 </style>
 </head>
 <body><main>
-<nav><a href="/">taskpack.org</a> · <a href="/spec/0.1.md">raw markdown</a> · <a href="/a2a/ext/taskpack/v1">A2A extension</a> · <a href="https://github.com/dongsheng123132/task-passport">reference implementation</a></nav>
+<nav><a href="../../">taskpack.org</a> · <a href="../0.1.md">raw markdown</a> · <a href="../../a2a/ext/taskpack/v1">A2A extension</a> · <a href="https://github.com/dongsheng123132/task-passport">reference implementation</a></nav>
 ${body}
 </main></body>
 </html>
