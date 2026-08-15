@@ -192,6 +192,10 @@ await writeFile(join(out, '_headers'), `/a2a/ext/taskpack/v1
   Access-Control-Allow-Origin: *
 `)
 
+// GitHub Pages drops the custom domain on deploy unless the artifact carries it, and a
+// dropped domain turns every URL the A2A descriptor claims back into a 404.
+await writeFile(join(out, 'CNAME'), `taskpack.org${String.fromCharCode(10)}`)
+
 await writeFile(join(out, '_redirects'), `/spec            /spec/0.1   302
 /spec/latest     /spec/0.1   302
 /a2a             /a2a/ext/taskpack/v1   302
