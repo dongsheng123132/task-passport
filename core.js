@@ -101,9 +101,16 @@ export async function runUkingAction(actionId, input = {}, options = {}) {
   }
 
   const hint = candidates.filter((item) => /[\\/]/.test(item)).join(', ')
+  // Most people who land here never wanted U-King: they run Codex or DSH and just
+  // need somewhere local to keep passports. Sending them off to install a product
+  // they did not ask for is the wrong first instruction, so lead with the
+  // standalone store and keep U-King as the second option.
   throw new Error(
-    `U-King executable was not found. Set TASK_PASSPORT_UKING to U-King.exe${hint ? ` (checked: ${hint})` : ''}.` +
-      (missingError ? ` ${missingError.message}` : ''),
+    'No passport store is configured, and U-King was not found.\n' +
+      '  Standalone (no U-King needed): pass --store <directory>, or set TASK_PASSPORT_STORE=<directory>.\n' +
+      '  Using U-King: set TASK_PASSPORT_UKING to U-King.exe' +
+      `${hint ? ` (checked: ${hint})` : ''}.` +
+      (missingError ? `\n  ${missingError.message}` : ''),
   )
 }
 

@@ -15,8 +15,8 @@
  */
 import { createHash } from 'node:crypto'
 import { deflateRawSync, inflateRawSync } from 'node:zlib'
-import { readFile, readdir, stat } from 'node:fs/promises'
-import { basename, join } from 'node:path'
+import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
+import { basename, dirname, join } from 'node:path'
 
 export const BAG_SPEC = 'task-passport-bag/0.1'
 
@@ -91,6 +91,11 @@ function normalizeAsks(asks) {
       accept: String(ask.accept || '').trim(),
       status: ask.status === 'answered' || ask.status === 'dropped' ? ask.status : 'open',
       answer: ask.answer ?? null,
+      // Optional, and only ever written by a receipt merge. An answer with no attribution
+      // is a fact with no source: still useful, but you cannot go back and ask who said it.
+      // Emitted only when present, so a pack that never saw a receipt is byte-identical.
+      ...(ask.answered_by ? { answered_by: String(ask.answered_by) } : {}),
+      ...(ask.answered_at ? { answered_at: String(ask.answered_at) } : {}),
     }))
 }
 
@@ -301,6 +306,147 @@ export function unpackState(bagPassport, { machine = '', localId, files = [], tr
   }
 }
 
+/**
+ * Fold the asks a pack is carrying into the passport that is sending it.
+ *
+ * The passport is the record that stays home, and "what I am waiting on someone else
+ * for" is part of the task's state, not a property of one envelope. Recording it is
+ * also the precondition for `mergeReceipt`: an answer can only come home to a question
+ * the record remembers asking.
+ *
+ * Returns `null` when nothing changed, so re-packing the same asks does not churn the
+ * version and lose someone else's concurrent write to a version conflict.
+ */
+export function recordSentAsks(existing, sent) {
+  const held = normalizeAsks(existing)
+  const byId = new Map(held.map((ask) => [ask.id, ask]))
+  const merged = []
+  for (const ask of normalizeAsks(sent)) {
+    const previous = byId.get(ask.id)
+    if (!previous) {
+      merged.push(ask)
+      continue
+    }
+    // Re-sending a question you already asked must not erase the answer you already
+    // have. Wording may be refreshed; the reply and who gave it survive.
+    byId.set(ask.id, {
+      ...previous,
+      to: ask.to,
+      what: ask.what,
+      why: ask.why,
+      accept: ask.accept,
+    })
+  }
+  const next = [...byId.values(), ...merged]
+  return JSON.stringify(next) === JSON.stringify(held) ? null : next
+}
+
+/**
+ * Fold a receipt back into the passport that asked the questions.
+ *
+ * `unpackState` mints a NEW passport, which is right for a handoff: two machines each
+ * hold a record that is authoritative for itself. A receipt is the opposite motion —
+ * it is the answer coming home to a task you already own. Landing it into a new
+ * passport leaves the original's asks sitting `open` forever and makes a human retype
+ * every answer, which is exactly the "nothing gets dropped" promise this format makes
+ * and would then break on the last step.
+ *
+ * So the merge is deliberately narrow. It writes answers, adopts facts the far side
+ * proved, and adds questions they aimed back at us. It never touches our goal, our
+ * current state or our next steps — an answer is not a licence to rewrite the task.
+ */
+export function mergeReceipt(bagPassport, target, { machine = '', now = new Date() } = {}) {
+  if (!target || typeof target !== 'object' || !target.id) throw new Error('target passport state with an id is required')
+  // A handoff carries someone's whole world; folding that into an existing passport
+  // would silently pick a winner between two current_states. §3.1 says mint a new id,
+  // and this is where that rule is enforced rather than explained.
+  if (bagPassport?.kind !== 'receipt') {
+    throw new Error(
+      `refusing to merge: this pack is a ${bagPassport?.kind || '(未声明)'}, not a receipt. ` +
+      'Land it without --into — a handoff must open its own passport so one task keeps one authoritative record.',
+    )
+  }
+  const rootId = bagPassport.lineage?.root_id
+  if (rootId !== target.id) {
+    throw new Error(
+      `refusing to merge: this receipt answers ${rootId || '(无血缘)'}, but you are merging into ${target.id}. ` +
+      'Merging an answer into the wrong task is worse than not merging it.',
+    )
+  }
+
+  const from = `${bagPassport.origin?.actor || '未署名'}@${bagPassport.origin?.machine || '未署名机器'}`
+  const at = now.toISOString().replace(/\.\d{3}Z$/, 'Z')
+  const incoming = normalizeAsks(bagPassport.asks)
+  const mine = normalizeAsks(target.asks)
+  const byId = new Map(mine.map((ask) => [ask.id, ask]))
+
+  const answered = []
+  const reopened = []
+  const inbound = []
+  for (const ask of incoming) {
+    const held = byId.get(ask.id)
+    if (!held) {
+      // Not one of ours. The far side is asking US something — the one thing a
+      // one-way handoff cannot express, arriving in the one direction that can.
+      inbound.push({ ...ask, to: 'self', status: 'open', answer: null })
+      continue
+    }
+    const hasAnswer = ask.status === 'answered' && ask.answer !== null && String(ask.answer).trim() !== ''
+    if (!hasAnswer) continue
+    // Overwriting an existing answer is legitimate (they changed their mind) but it is
+    // never silent: a merge that quietly replaces a decision is how a record starts lying.
+    if (held.status === 'answered' && String(held.answer ?? '') !== String(ask.answer)) {
+      reopened.push({ id: ask.id, was: held.answer, now: ask.answer })
+    }
+    held.answer = ask.answer
+    held.status = 'answered'
+    held.answered_by = from
+    held.answered_at = at
+    answered.push(ask.id)
+  }
+
+  // Facts they proved. Sealed at their pack time already; travelFacts is idempotent, so
+  // running it again costs nothing and protects against a hand-built receipt.
+  const known = new Set((Array.isArray(target.facts) ? target.facts : []).map((fact) => String(fact?.claim || '')))
+  const adopted = travelFacts(bagPassport.passport?.facts, false, bagPassport.origin?.machine || '')
+    .filter((fact) => fact?.claim && !known.has(String(fact.claim)))
+    .map((fact) => ({ ...fact, source: fact.source ? `${fact.source}（经 ${from} 回执）` : `${from} 回执` }))
+
+  const asks = [...mine, ...inbound]
+  const stillOpen = asks.filter((ask) => ask.status === 'open')
+  const note = `收到 ${from} 的回执（${at}）：答复 ${answered.length} 条，仍待答 ${stillOpen.length} 条${inbound.length ? `，对方反问 ${inbound.length} 条` : ''}。`
+
+  const state = {
+    ...target,
+    machine_id: target.machine_id || machine,
+    asks,
+    facts: [...(Array.isArray(target.facts) ? target.facts : []), ...adopted],
+    next_steps: [
+      // What someone else is now waiting on you for goes ahead of your own list —
+      // the same ordering rule landing uses, for the same reason.
+      ...inbound.map((ask) => `回答对方反问 ${ask.id}：${ask.what}（什么算答完：${ask.accept}）`),
+      ...(Array.isArray(target.next_steps) ? target.next_steps : []),
+    ],
+    current_state: `${note}\n\n${target.current_state || ''}`,
+  }
+
+  return {
+    state,
+    report: {
+      from: bagPassport.origin || {},
+      lineage: bagPassport.lineage || {},
+      answered,
+      answered_count: answered.length,
+      still_open: stillOpen.map((ask) => ask.id),
+      inbound_asks: inbound.map((ask) => ask.id),
+      overwritten: reopened,
+      facts_adopted: adopted.length,
+      // Their landing checks were about their machine, not ours. Reported, never adopted.
+      ignored_landing_checks: normalizeLandingChecks(bagPassport.landing_checks).length,
+    },
+  }
+}
+
 /* ---------- minimal ZIP, so a bag is one file anyone can double-click ---------- */
 
 function dosTime(date = new Date()) {
@@ -430,4 +576,24 @@ export async function readLuggage(paths = []) {
     await walk(clean, basename(clean))
   }
   return files
+}
+
+/**
+ * Write luggage back to disk. A bag whose files stay sealed inside the zip is just a
+ * heavier way to send a note — the point is that they arrive usable.
+ *
+ * One implementation, called by every landing path there is: a handoff and a receipt
+ * must unpack identically, and the path traversal guard that `luggagePath` applied on
+ * the way in is only worth anything if nobody writes their own loop on the way out.
+ */
+export async function writeLuggage(entries, directory) {
+  const landed = []
+  for (const [path, data] of entries) {
+    if (!path.startsWith('data/files/')) continue
+    const target = join(directory, ...path.slice('data/files/'.length).split('/'))
+    await mkdir(dirname(target), { recursive: true })
+    await writeFile(target, data)
+    landed.push(target)
+  }
+  return landed
 }
