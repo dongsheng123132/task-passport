@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Consulting Services Agreement</title>
+  <style>
+    body { font-family: "Times New Roman", serif; max-width: 720px; margin: 2em auto; line-height: 1.6; }
+    h1 { text-align: center; }
+    h2 { margin-top: 1.5em; }
+    .signature { margin-top: 3em; border-top: 1px solid #000; width: 300px; }
+  </style>
+</head>
+<body>
+  <h1>Consulting Services Agreement</h1>
+  <p>This Consulting Services Agreement (the "Agreement") is made between
+     <strong>{{client_name}}</strong> ("Client") and
+     <strong>{{vendor_name}}</strong> ("Consultant"), effective
+     {{effective_date}}.</p>
+
+  <h2>1. Services</h2>
+  <p>Consultant shall provide consulting services to Client as mutually agreed
+     in writing, including but not limited to technical advisory, architecture
+     review, and team coaching ("Services").</p>
+
+  <h2>2. Fees</h2>
+  <p>Client shall pay Consultant a Monthly Fee of
+     <strong>¥{{monthly_fee}}</strong> (the "Monthly Fee") for each calendar
+     month during the Term. Invoices are due within 30 days of receipt.</p>
+
+  <h2>3. Term</h2>
+  <p>This Agreement has a Term of <strong>{{term_months}} months</strong>,
+     beginning on {{effective_date}}. Either party may terminate for material
+     breach with 30 days' written notice.</p>
+
+  <h2>4. Signatures</h2>
+  <p>This Agreement is executed by the undersigned representatives:</p>
+  <p>On behalf of Client: <strong>{{signer_name}}</strong>
+     ({{signer_email}})</p>
+  <div class="signature">Client signature</div>
+  <p>On behalf of Consultant: <strong>{{vendor_name}}</strong></p>
+  <div class="signature">Consultant signature</div>
+</body>
+</html>

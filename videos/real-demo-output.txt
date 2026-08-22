@@ -1,0 +1,152 @@
+████  ACT 1 — Agent A 开始工作（Claude Code / Codex / 任意 harness）████
+
+──────────────────────────────────────────────────────────────
+$ node cli.js new --title Ship the docs site before Friday --goal Deploy the new docs site to production with zero broken links --current-state Draft written. Build script failing on asset paths. --next-step Fix asset paths, run link checker, deploy --store .video-demo/store-a
+──────────────────────────────────────────────────────────────
+{"passport_id":"TP-K8SZ-X5P6","state_version":1,"state":{"spec":"2origin/0.1","kind":"task.origin","id":"TP-K8SZ-X5P6","title":"Ship the docs site before Friday","goal":"Deploy the new docs site to production with zero broken links","version":1,"machine_id":"","harness":"task-passport-cli","scope":"","created_at":"2026-08-18T17:41:22Z","updated_at":"2026-08-18T17:41:22Z","current_state":"Draft written. Build script failing on asset paths.","facts":[],"decisions":[],"actions":[],"artifacts":[],"verification":"","next_steps":["Fix asset paths, run link checker, deploy"],"learnings":[]},"handoff_prompt":"请接手任务护照 TP-K8SZ-X5P6：先读取当前状态与下一步，只继承已验证事实，不继承上一位 AI 的聊天记录。"}
+
+── Agent A 干到一半……突然，笔记本合上了。──
+
+──────────────────────────────────────────────────────────────
+$ node cli.js pack TP-K8SZ-X5P6 --out .video-demo/out/handoff.taskpack.json --flat --actor Agent A --note Laptop dying, take over please --store .video-demo/store-a
+──────────────────────────────────────────────────────────────
+{"ok":true,"pack":".video-demo/out/handoff.taskpack.json","encoding":"flat","passport_id":"TP-K8SZ-X5P6","state_version":1,"logged":true,"pack_sha256":"efb5f727f75dae5caa9a59f630347db5c3eb4b0ca7840f78c03b477cc3152e84","entries":["bagit.txt","bag-info.txt","manifest-sha256.txt","tagmanifest-sha256.txt","data/passport.json"],"asks":0,"asks_recorded":false,"landing_checks":0,"luggage":[]}
+
+████  ACT 2 — 换了一台机器，Agent B = Gemini（ADK + Vertex AI）████
+
+──────────────────────────────────────────────────────────────
+$ python examples/gemini/adk_agent.py land .video-demo/out/handoff.taskpack.json --store .video-demo/store-b
+──────────────────────────────────────────────────────────────
+{
+  "ok": true,
+  "passport_id": "TP-ECJQ-V7H2",
+  "lineage": {
+    "root_id": "TP-K8SZ-X5P6",
+    "from_version": 1,
+    "chain": [
+      "TP-K8SZ-X5P6@1"
+    ]
+  },
+  "from": {
+    "actor": "Agent A",
+    "machine": "zjzhfs",
+    "harness": "task-passport-cli"
+  },
+  "luggage": [],
+  "needs_reverify": 0,
+  "landing_checks_required": 0,
+  "open_asks": 0,
+  "handoff_prompt": "请接手任务护照 TP-ECJQ-V7H2：先读取当前状态与下一步，只继承已验证事实，不继承上一位 AI 的聊天记录。"
+}
+
+──────────────────────────────────────────────────────────────
+$ python examples/gemini/adk_agent.py open --store .video-demo/store-b
+──────────────────────────────────────────────────────────────
+{
+  "passport_id": "TP-ECJQ-V7H2",
+  "state_version": 2,
+  "state": {
+    "spec": "2origin/0.1",
+    "kind": "task.origin",
+    "id": "TP-ECJQ-V7H2",
+    "title": "Ship the docs site before Friday",
+    "goal": "Deploy the new docs site to production with zero broken links",
+    "version": 2,
+    "machine_id": "zjzhfs",
+    "harness": "task-passport-cli",
+    "scope": "",
+    "created_at": "2026-08-18T17:41:33Z",
+    "updated_at": "2026-08-18T17:41:33Z",
+    "current_state": "搬家自 Agent A@zjzhfs（血缘 TP-K8SZ-X5P6@1）。\n\nDraft written. Build script failing on asset paths.",
+    "facts": [],
+    "decisions": [],
+    "actions": [],
+    "artifacts": [
+      "搬家自 Agent A@zjzhfs（血缘 TP-K8SZ-X5P6@1）"
+    ],
+    "verification": "",
+    "next_steps": [
+      "Fix asset paths, run link checker, deploy"
+    ],
+    "learnings": [],
+    "asks": [],
+    "landing_checks": []
+  },
+  "compiled_context": "## 任务护照 TP-ECJQ-V7H2\n\n**目标**：Deploy the new docs site to production with zero broken links\n**当前状态**：搬家自 Agent A@zjzhfs（血缘 TP-K8SZ-X5P6@1）。\n\nDraft written. Build script failing on asset paths.\n\n**已验证事实**：\n- 暂无\n\n**已定决策**：\n- 暂无\n\n**产物引用**：\n- 搬家自 Agent A@zjzhfs（血缘 TP-K8SZ-X5P6@1）\n\n**下一步**：\n- Fix asset paths, run link checker, deploy",
+  "handoff_prompt": "请接手任务护照 TP-ECJQ-V7H2：先读取当前状态与下一步，只继承已验证事实，不继承上一位 AI 的聊天记录。"
+}
+
+──────────────────────────────────────────────────────────────
+$ python examples/gemini/adk_agent.py continue Fix the asset paths and run the link checker --mock --store .video-demo/store-b
+──────────────────────────────────────────────────────────────
+{
+  "passport_id": "TP-ECJQ-V7H2",
+  "state_version": 3,
+  "state": {
+    "spec": "2origin/0.1",
+    "kind": "task.origin",
+    "id": "TP-ECJQ-V7H2",
+    "title": "Ship the docs site before Friday",
+    "goal": "Deploy the new docs site to production with zero broken links",
+    "version": 3,
+    "machine_id": "zjzhfs",
+    "harness": "task-passport-cli",
+    "scope": "",
+    "created_at": "2026-08-18T17:41:33Z",
+    "updated_at": "2026-08-18T17:41:40Z",
+    "current_state": "搬家自 Agent A@zjzhfs（血缘 TP-K8SZ-X5P6@1）。\n\nDraft written. Build script failing on asset paths.\n[Agent B/Gemini 2026-08-18T17:41:40Z] 已执行：Fix the asset paths and run the link checker",
+    "facts": [],
+    "decisions": [],
+    "actions": [],
+    "artifacts": [
+      "搬家自 Agent A@zjzhfs（血缘 TP-K8SZ-X5P6@1）"
+    ],
+    "verification": "",
+    "next_steps": [
+      "Fix asset paths, run link checker, deploy"
+    ],
+    "learnings": [],
+    "asks": [],
+    "landing_checks": []
+  },
+  "handoff_prompt": "请接手任务护照 TP-ECJQ-V7H2：先读取当前状态与下一步，只继承已验证事实，不继承上一位 AI 的聊天记录。"
+}
+
+──────────────────────────────────────────────────────────────
+$ python examples/gemini/adk_agent.py pack --out .video-demo/out/receipt.taskpack.json --actor Agent B --store .video-demo/store-b
+──────────────────────────────────────────────────────────────
+{
+  "ok": true,
+  "pack": ".video-demo/out/receipt.taskpack.json",
+  "encoding": "bagit-zip",
+  "passport_id": "TP-ECJQ-V7H2",
+  "state_version": 3,
+  "logged": true,
+  "pack_sha256": "3ec4a1bf067360d74d58a663ee01530f03884fa2bd1f67b3e9ba6ea6add67568",
+  "entries": [
+    "bagit.txt",
+    "bag-info.txt",
+    "manifest-sha256.txt",
+    "tagmanifest-sha256.txt",
+    "data/passport.json"
+  ],
+  "asks": 0,
+  "asks_recorded": false,
+  "landing_checks": 0,
+  "luggage": []
+}
+
+████  ACT 3 — GCP 证据：Gemini 3.5 真的在 Vertex AI 上跑 ████
+
+$ curl -X POST https://asia-northeast1-aiplatform.googleapis.com/v1/projects/clawme-488709/locations/asia-northeast1/publishers/google/models/gemini-3.5-flash:generateContent
+   -H 'x-goog-api-key: ***' -d '{contents:[{role:user, parts:[{text:"Reply with exactly: I am alive"}]}]}'
+
+{
+  "model": "gemini-3.5-flash",
+  "reply": "I am alive",
+  "prompt_tokens": 7,
+  "total_tokens": 131
+}
+
+████  DONE — 完整链路：Agent A → TaskPack → Agent B(Gemini) → 回传 ████
+回执包在: .video-demo/out/receipt.taskpack.json

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; background: #fff; font-family: 'Segoe UI', Arial, sans-serif; }
+  .diagram { width: 1200px; height: 800px; position: relative; background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%); }
+  .title { position: absolute; top: 18px; left: 40px; font-size: 26px; font-weight: 700; color: #0f172a; }
+  .subtitle { position: absolute; top: 56px; left: 40px; font-size: 15px; color: #475569; }
+  .box { position: absolute; border-radius: 10px; padding: 12px 16px; font-size: 13px; line-height: 1.5; }
+  .box h3 { margin: 0 0 6px 0; font-size: 14px; }
+  .box .small { font-size: 11px; color: #475569; }
+  .agent-a { left: 40px; top: 140px; width: 210px; background: #dbeafe; border: 2px solid #3b82f6; }
+  .pack { left: 300px; top: 160px; width: 150px; background: #fef3c7; border: 2px solid #f59e0b; text-align: center; }
+  .agent-b { left: 500px; top: 140px; width: 210px; background: #dcfce7; border: 2px solid #16a34a; }
+  .firestore { left: 760px; top: 160px; width: 180px; background: #f3e8ff; border: 2px solid #8b5cf6; }
+  .arrow { position: absolute; height: 2px; background: #64748b; }
+  .arrow-label { position: absolute; font-size: 11px; color: #475569; background: #fff; padding: 0 4px; border-radius: 3px; }
+  .foot { position: absolute; bottom: 24px; left: 40px; right: 40px; font-size: 12px; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 10px; }
+  .steps { position: absolute; top: 340px; left: 40px; width: 900px; font-size: 12.5px; color: #334155; line-height: 2.1; }
+  .steps b { color: #0f172a; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-right: 6px; }
+  .b-red { background: #fee2e2; color: #b91c1c; }
+  .b-green { background: #dcfce7; color: #15803d; }
+  .b-blue { background: #dbeafe; color: #1d4ed8; }
+  .b-yellow { background: #fef3c7; color: #b45309; }
+  .b-purple { background: #f3e8ff; color: #7c3aed; }
+</style>
+</head>
+<body>
+<div class="diagram">
+  <div class="title">Task Passport · Agents Shouldn't Restart From Zero</div>
+  <div class="subtitle">State travels in a file — not in a chat transcript. Any agent can pick up where the last one left off.</div>
+
+  <div class="box agent-a">
+    <h3>Agent A</h3>
+    <div>Claude Code / Codex /<br>DeepSeek Harness /<br>any harness</div>
+    <div class="small" style="margin-top:6px"><span class="badge b-blue">long-running task</span>builds, deploys, research…</div>
+  </div>
+
+  <div class="box pack">
+    <h3>TaskPack</h3>
+    <div class="small">.taskpack</div>
+    <div class="small">(BagIt+ZIP)</div>
+    <div class="small">or .taskpack.json</div>
+    <div class="small" style="margin-top:4px"><span class="badge b-yellow">1 file</span></div>
+  </div>
+
+  <div class="box agent-b">
+    <h3>Agent B = Gemini 3.5</h3>
+    <div>Google ADK agent</div>
+    <div class="small">google-genai SDK</div>
+    <div class="small">Vertex AI · asia-northeast1</div>
+    <div class="small" style="margin-top:6px"><span class="badge b-green">continues task</span>not from zero</div>
+  </div>
+
+  <div class="box firestore">
+    <h3>Google Cloud Firestore</h3>
+    <div class="small">Provider for passport state</div>
+    <div class="small" style="margin-top:6px"><span class="badge b-purple">GCP service</span></div>
+  </div>
+
+  <!-- arrows -->
+  <div class="arrow" style="left:250px; top:215px; width:50px; transform:rotate(0deg);"></div>
+  <div class="arrow-label" style="left:255px; top:195px;">pack</div>
+  <div class="arrow" style="left:450px; top:215px; width:50px;"></div>
+  <div class="arrow-label" style="left:452px; top:195px;">land</div>
+  <div class="arrow" style="left:710px; top:215px; width:50px;"></div>
+  <div class="arrow-label" style="left:712px; top:195px;">open/checkpoint</div>
+
+  <!-- crash moment -->
+  <div class="box" style="left:40px; top:250px; width:660px; background:#fff7ed; border:1.5px dashed #f97316;">
+    <h3 style="color:#c2410c">The problem we solve</h3>
+    <div class="small">Laptop closes · agent crashes · model switches · person leaves → <b>state survives in the file</b>, verified facts degrade honestly at the machine boundary.</div>
+  </div>
+
+  <div class="steps">
+    <div><span class="badge b-blue">1</span><b>Agent A works</b> — the task's goal, current state, verified facts, decisions, next steps live in a versioned Passport.</div>
+    <div><span class="badge b-yellow">2</span><b>pack</b> — seals state + luggage into one portable file. Machine-scoped facts are marked unproven at pack time. Every pack is logged to an outbox with a snapshot stub.</div>
+    <div><span class="badge b-green">3</span><b>Agent B = Gemini lands the file</b> — reads the passport, answers open asks, executes the next step via ADK tools, checkpoints back to Firestore.</div>
+    <div><span class="badge b-purple">4</span><b>Repack &amp; send back</b> — receipts merge into the original passport (land --into); Agent C (any harness) continues. <b>Never from zero.</b></div>
+  </div>
+
+  <div class="foot">
+    Task Passport · MIT · npm: <b>task-passport</b> · spec: <b>taskpack/0.1</b> · <b>taskpack.org</b> · Conformance: 10 checks, exit 0/2 · 78 tests · <b>Zero-runtime-dependency core</b> — Google integration is an example adapter
+  </div>
+</div>
+</body>
+</html>

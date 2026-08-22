@@ -17,3 +17,7 @@ docs/STRATEGY.md
 .dbg-*/
 .tp-*.mjs
 .tp-*/
+
+# remotion 渲染产物（不进仓库）
+videos/hackathon-demo/out/
+videos/hackathon-demo/audio-out/
