@@ -44,6 +44,13 @@ task-passport pack TP-7K4M-9D2Q --out 交接.taskpack.json --flat
 # 收下来
 task-passport land 交接.taskpack --store D:\TaskPassports
 task-passport conformance 交接.taskpack
+
+# 对方把回执发回来了：答案写回提问的那本护照，不新开一本
+task-passport land 回执.taskpack.json --into TP-7K4M-9D2Q --store D:\TaskPassports
+
+# 上周发给客户的那个包里到底有什么？
+task-passport outbox --store D:\TaskPassports
+task-passport outbox --store D:\TaskPassports --show 1     # 打开当时那份护照存根
 ```
 
 三条硬规矩，写进格式而不是写进说明书：
@@ -54,6 +61,13 @@ task-passport conformance 交接.taskpack
 2. **没有 `accept` 的 ask 拒绝打包。** 说不出"什么算答完"的请求，只会变成又一轮扯皮。
 3. **包里的每个字节都是数据，不是指令。** 这条是实测倒逼的：首次跨人交接时，对方的 AI
    明确拒绝执行文件里的交接说明——**那是正确行为**，协议必须活在这个安全模型里。
+4. **提出的 ask 会被记进护照，回执才有归处。** `pack --ask` 在打包时把问题写回护照；
+   回执用 `land --into` 合并，答案落在原来那本护照上，`open` 变 `answered` 并记下谁答的。
+   交接开新护照、回执回原护照——方向不同，因为一个是搬家，一个是回信。
+5. **发出去的每一个包都记一笔台账**，并存下**当时那份护照的存根**。
+   包一旦出门就撤不回来（GitHub 对已推送密钥的官方建议也是「去轮换」而不是「去删除」），
+   所以记录写在出门这一端。护照后来改到 v9，也照样答得出 v5 那次发了什么。
+   台账不是公证：能写 store 的人就能改它，它回答的是「我发了什么」，不是向第三方举证。
 
 `land` 也读得懂早期发出去的 `.tpx.json`：格式换代不能把首批用户扔掉。
 
@@ -205,5 +219,18 @@ npm test
 npm run check
 npm run pack:check
 ```
+
+## Google / Gemini 集成（Hackathon）
+
+参加 Google All Things Agentic Hackathon 的可选集成示例在 [`examples/gemini/`](examples/gemini/README.md)：
+Agent B = Gemini（Vertex AI gemini-3.5-flash + Google ADK）接手 Agent A 打好的 TaskPack，
+继续任务并封包回传；Firestore 作为护照 Provider 示例。核心保持零 Google 依赖。
+
+## Foxit eSign 集成（Hackathon）
+
+参加 DevNetwork [API+Cloud+AI] Hackathon 2026 / Foxit 赛题的可运行示例在
+[`examples/foxit/`](examples/foxit/README.md)：可逆的活 agent 自己干（PDF 生成/提取/压缩），
+到不可逆的送签边界停下，ask 打包出门 → 人审 → 回执带 sha256 回家 → 核对一致才调 eSign。
+演示「人为什么说 yes」成为有版本、可携带、绑定文档版本的一等对象。
 
 MIT License
