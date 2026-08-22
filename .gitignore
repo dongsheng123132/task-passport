@@ -7,3 +7,13 @@ site/dist/
 
 # 内部战略判断（含杀死判据与收费边界），不进公开仓库
 docs/STRATEGY.md
+
+# hackathon 内部材料（含 API 凭据），不进公开仓库
+.devpost-foxit/
+
+# 本地演示/探针产物（不进仓库）
+.demo-foxit/
+.video-demo/
+.dbg-*/
+.tp-*.mjs
+.tp-*/

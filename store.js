@@ -85,13 +85,27 @@ async function acquireLock(lockPath, options) {
   }
 }
 
-async function withLock(lockPath, options, operation) {
-  await acquireLock(lockPath, options)
+/**
+ * Exported so that everything writing into a store shares ONE lock implementation.
+ * A second, subtly different copy is how two terminals end up interleaving writes
+ * that each looked correct on its own.
+ */
+export async function withFileLock(lockPath, operation, options = {}) {
+  const settings = {
+    lockTimeoutMs: options.lockTimeoutMs ?? 5_000,
+    retryDelayMs: options.retryDelayMs ?? 25,
+    staleLockMs: options.staleLockMs ?? 30_000,
+  }
+  await acquireLock(lockPath, settings)
   try {
     return await operation()
   } finally {
     await rm(lockPath, { force: true }).catch(() => {})
   }
+}
+
+async function withLock(lockPath, options, operation) {
+  return await withFileLock(lockPath, operation, options)
 }
 
 /**

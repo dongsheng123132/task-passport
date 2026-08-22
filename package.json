@@ -29,9 +29,9 @@
     "taskpack.js"
   ],
   "scripts": {
-    "test": "node --test test/bag.test.mjs test/cli.test.mjs test/core.test.mjs test/mcp.test.mjs test/plugin-manifests.test.mjs test/store.test.mjs test/taskpack.test.mjs",
+    "test": "node --test test/bag.test.mjs test/cli.test.mjs test/core.test.mjs test/merge-receipt.test.mjs test/mcp.test.mjs test/outbox.test.mjs test/plugin-manifests.test.mjs test/store.test.mjs test/taskpack.test.mjs",
     "test:e2e:uking": "node test/e2e-uking.mjs",
-    "check": "node --check bag.js && node --check taskpack.js && node --check core.js && node --check store.js && node --check index.js && node --check mcp.js && node --check cli.js",
+    "check": "node --check bag.js && node --check taskpack.js && node --check core.js && node --check store.js && node --check outbox.js && node --check index.js && node --check mcp.js && node --check cli.js",
     "pack:check": "npm pack --dry-run"
   },
   "dsh": {

@@ -2,9 +2,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { hostname } from 'node:os'
 import { basename, dirname, join } from 'node:path'
-import { buildBag, readLuggage, readZip, unpackState, verifyBag, writeZip } from './bag.js'
+import { buildBag, mergeReceipt, readLuggage, readZip, recordSentAsks, unpackState, verifyBag, writeLuggage, writeZip } from './bag.js'
 import { createPassportClient, defaultUkingHints, handoffPrompt } from './core.js'
 import { runMcpServer } from './mcp.js'
+import { outboxDirectory, readArchived, readOutbox, recordOutbound } from './outbox.js'
 import { createDirectoryPassportProvider } from './store.js'
 import { conformance, fromFlat, lintForExport, toFlat } from './taskpack.js'
 
@@ -43,6 +44,12 @@ async function conformanceReport(path) {
     report.checks.unshift({ id: 'C0', requirement: '文件本身就合规，不需要读取方替它修复', ok: false, detail: repaired })
   }
   return report
+}
+
+/** Where luggage lands when the caller did not say. Keeps it next to the store it belongs to. */
+function luggageDirectory(passportId) {
+  const store = storeDirectory()
+  return option('--files-out') || (store ? join(store, `${passportId}.files`) : `${passportId}.files`)
 }
 
 /**
@@ -100,10 +107,13 @@ Usage:
   task-passport prompt <TP-ID>
   task-passport new --title <text> --goal <text> [--current-state <text>] [--next-step <text>] [--store <directory>]
   task-passport checkpoint --file <state.json> --expected-version <n> [--store <directory>]
-  task-passport pack <TP-ID> --out <file> [--flat] [--file <path>]... [--actor <name>] [--note <text>]
+  task-passport outbox [--passport <TP-ID>] [--limit <n>] [--show <n>] [--outbox <dir>]
+                              发件台账：什么时候把哪一版发给了谁，包里有什么。--show 打开当时那份护照存根
+  task-passport pack <TP-ID> --out <file> [--flat] [--file <path>]... [--actor <name>] [--to <who>] [--note <text>]
                               [--ask "要什么|什么算答完"]... [--check "要自检什么|怎么做"]...
                               [--asks <asks.json>] [--checks <checks.json>] [--kind receipt]
   task-passport unpack <file> [--store <directory>]          (别名: land) [--dry-run] [--files-out <dir>]
+  task-passport land <file> --into <TP-ID>                   收下回执：答案写回提问的那本护照，不新开一本
   task-passport conformance <file>
   task-passport doctor [--uking <path> | --store <directory>]
   task-passport mcp [--uking <path> | --store <directory>]
@@ -192,7 +202,7 @@ async function main() {
   }
   if (command === 'pack' || command === 'export') {
     if (!argv[1] || argv[1].startsWith('-')) throw new Error('passport id is required')
-    const opened = await client.open(argv[1])
+    let opened = await client.open(argv[1])
     const files = await readLuggage(options('--file'))
     const asks = [...inlineAsks(), ...(await jsonOption('--asks'))]
     const landingChecks = [...inlineChecks(), ...(await jsonOption('--checks'))]
@@ -201,6 +211,33 @@ async function main() {
     // not refusals: only the sender knows whether the receiver already has that drive.
     for (const warning of lintForExport({ state: opened.state, files, asks })) {
       console.error(`⚠ ${warning}`)
+    }
+
+    // Record what we asked, in the record that stays home.
+    //
+    // Without this the sender's passport has no memory of its own questions, so a
+    // receipt coming back has nothing to merge into and every answer gets retyped by
+    // hand. A task record that forgets what it asked is lying by omission — and it
+    // fails in the quietest possible way, because the pack itself looks perfect.
+    let asksRecorded = false
+    if (asks.length) {
+      const recorded = recordSentAsks(opened.state.asks, asks)
+      if (recorded) {
+        try {
+          await client.checkpoint({ ...opened.state, asks: recorded }, opened.state_version)
+          // Re-open so the pack ships the same version the passport now holds; otherwise
+          // the pack's lineage points at a state that does not contain its own asks.
+          opened = await client.open(argv[1])
+          asksRecorded = true
+        } catch (error) {
+          // The pack is the deliverable. A read-only or contended store must not stop it
+          // from being produced — but the operator has to hear that the receipt will not
+          // auto-merge, so this is loud rather than swallowed.
+          console.error(`⚠ 提出的 ask 没能记进护照（${error.message}）——回执回来时无法自动合并，需人工录入`)
+        }
+      } else {
+        asksRecorded = true
+      }
     }
 
     const bag = buildBag({
@@ -215,18 +252,62 @@ async function main() {
     })
     const flat = argv.includes('--flat')
     const out = requiredOption('--out')
-    await writeFile(out, flat ? Buffer.from(toFlat(bag), 'utf8') : writeZip(bag))
+    const packBytes = flat ? Buffer.from(toFlat(bag), 'utf8') : writeZip(bag)
+    await writeFile(out, packBytes)
+
+    // A pack cannot be unsent, so the record is written on the way out. Never fatal:
+    // failing to keep a diary must not stop the deliverable from being produced.
+    const ledger = await recordOutbound(outboxDirectory({ outbox: option('--outbox'), store: storeDirectory() }), {
+      entry: {
+        passport_id: opened.state.id,
+        state_version: opened.state_version,
+        encoding: flat ? 'flat' : 'bagit-zip',
+        out: basename(out),
+        to: option('--to') || '',
+        actor: option('--actor') || '',
+        luggage: [...bag.keys()].filter((key) => key.startsWith('data/files/')).map((key) => key.slice('data/files/'.length)),
+      },
+      passport: JSON.parse(bag.get('data/passport.json').toString('utf8')),
+      packBytes,
+    })
+    if (!ledger.ok) console.error(`⚠ 发件台账没写成（${ledger.error}）——这个包出门了但没有记录`)
+
     console.log(JSON.stringify({
       ok: true,
       pack: out,
       encoding: flat ? 'flat' : 'bagit-zip',
       passport_id: opened.state.id,
       state_version: opened.state_version,
+      logged: ledger.ok,
+      pack_sha256: ledger.entry.pack_sha256,
       entries: [...bag.keys()],
       asks: asks.length,
+      // false means a receipt for this pack will need hand-merging — worth knowing now,
+      // not when the answers come back.
+      asks_recorded: asksRecorded,
       landing_checks: landingChecks.length,
       luggage: options('--file').map((path) => basename(path)),
     }))
+    return
+  }
+
+  // 「上周发给客户的那个包里到底有什么？」— previously unanswerable, which is the whole
+  // reason this command exists. `--show <n>` opens the archived passport for entry n.
+  if (command === 'outbox') {
+    const directory = outboxDirectory({ outbox: option('--outbox'), store: storeDirectory() })
+    const report = await readOutbox(directory, {
+      passportId: option('--passport'),
+      limit: option('--limit') ? Number(option('--limit')) : undefined,
+    })
+    const show = option('--show')
+    if (show) {
+      const entry = report.entries[Number(show) - 1]
+      if (!entry) throw new Error(`no ledger entry ${show} (there are ${report.entries.length})`)
+      if (!entry.archived_passport) throw new Error(`ledger entry ${show} has no archived copy`)
+      console.log(JSON.stringify({ ok: true, entry, passport: await readArchived(directory, entry.archived_passport) }))
+      return
+    }
+    console.log(JSON.stringify({ ok: true, ...report }))
     return
   }
 
@@ -251,6 +332,35 @@ async function main() {
       return
     }
     const files = [...entries.keys()].filter((path) => path.startsWith('data/files/')).map((path) => path.slice('data/files/'.length))
+
+    // A receipt is the answer coming home. Folding it into the passport that asked the
+    // questions is the difference between "nothing gets dropped" and "a human retypes
+    // fourteen answers", which is where a promise like that actually gets broken.
+    const into = option('--into')
+    if (into) {
+      const opened = await client.open(into)
+      // Merge first: its refusals (wrong kind, wrong task) must fire before anything
+      // touches the disk, and a dry run that writes files is not a dry run.
+      const { state, report } = mergeReceipt(passport, opened.state, { machine: hostname() })
+      if (argv.includes('--dry-run')) {
+        console.log(JSON.stringify({ ok: true, dry_run: true, passport_id: opened.state.id, would_land: files, ...report }))
+        return
+      }
+      const landed = await writeLuggage(entries, luggageDirectory(opened.state.id))
+      const withLuggage = landed.length
+        ? { ...state, artifacts: [...(state.artifacts || []), ...landed.map((name) => `回执行李：${name}`)] }
+        : state
+      const saved = await client.checkpoint(withLuggage, opened.state_version)
+      console.log(JSON.stringify({
+        ok: true,
+        merged_into: saved.passport_id,
+        state_version: saved.state_version,
+        luggage: landed,
+        ...report,
+      }))
+      return
+    }
+
     if (argv.includes('--dry-run')) {
       console.log(JSON.stringify({
         ok: true,
@@ -269,21 +379,7 @@ async function main() {
     })
     const opened = await client.open(created.passport_id)
 
-    // Unpack the luggage for real. A bag whose files stay sealed inside the zip is
-    // just a heavier way to send a note — the point is that they arrive usable.
-    const luggageDirectory = option('--files-out')
-      || (storeDirectory() ? join(storeDirectory(), `${created.passport_id}.files`) : `${created.passport_id}.files`)
-    const landed = []
-    if (files.length) {
-      await mkdir(luggageDirectory, { recursive: true })
-      for (const [path, data] of entries) {
-        if (!path.startsWith('data/files/')) continue
-        const target = join(luggageDirectory, ...path.slice('data/files/'.length).split('/'))
-        await mkdir(dirname(target), { recursive: true })
-        await writeFile(target, data)
-        landed.push(target)
-      }
-    }
+    const landed = await writeLuggage(entries, luggageDirectory(created.passport_id))
 
     const state = unpackState(passport, {
       machine: hostname(),

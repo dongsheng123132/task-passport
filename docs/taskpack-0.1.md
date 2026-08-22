@@ -138,12 +138,17 @@ implementation MAY restore a ✓ only when the landing machine equals `verified_
 
 ```jsonc
 { "id": "a1", "to": "peer", "what": "…", "why": "…", "accept": "what would count as answered",
-  "status": "open", "answer": null }
+  "status": "open", "answer": null,
+  "answered_by": "张老师@客户机", "answered_at": "2026-08-16T13:10:20Z" }  // optional, see §4.6
 ```
 
 A one-way handoff cannot express "I still need something from you". `accept` is the
 load-bearing field: without it the reply cannot be judged, only negotiated. **An ask
 without `accept` MUST be refused at pack time.**
+
+An implementation that sends asks MUST record them in the passport that stays home.
+A record that does not remember its own questions has nowhere to put the answers, and
+the failure is silent — the pack itself looks perfect (§4.6).
 
 ### 4.4 Landing checks
 
@@ -154,6 +159,32 @@ without `accept` MUST be refused at pack time.**
 
 Required checks MUST be placed ahead of the sender's own next steps when the pack lands.
 This step is the entire difference between TaskPack and mailing someone a document.
+
+### 4.4.1 Receipts come home; handoffs do not
+
+§3.1 requires the receiver to mint a new id. That rule is about a **handoff**: two
+machines each end up holding a record that is authoritative for itself, and reusing the
+sender's id would create two "authoritative" copies of one thing.
+
+A `receipt` moves the other way. It is the answer to questions a passport you already
+hold went out and asked, so landing it into a *new* passport leaves the original's asks
+sitting `open` forever while a human retypes every answer — the "nothing gets dropped"
+promise, broken on the last step. Therefore:
+
+1. A receipt MAY be merged into the passport whose id equals its `lineage.root_id`.
+   An implementation MUST refuse to merge it into any other passport, and MUST refuse
+   to merge a `handoff` at all.
+2. A merge writes `answer` and `status` onto the matching asks, and MAY record
+   `answered_by` / `answered_at`. It MUST NOT overwrite the target's goal, current
+   state or next steps: **an answer is not a licence to rewrite the task.**
+3. Asks in the receipt with no counterpart in the target are questions aimed back at
+   the merging side. They are adopted as open asks, not discarded.
+4. Facts carried by a receipt cross a machine boundary like any others — §4.2 applies
+   unchanged, so a machine-scoped fact in a receipt still arrives sealed.
+5. Landing checks in a receipt describe the *sender's* machine. They are reported and
+   MUST NOT be adopted as the merging side's own.
+
+Reference implementation: `task-passport land <receipt> --into <TP-ID>`.
 
 ### 4.5 Trust boundary — instructions MUST NOT hide in data
 

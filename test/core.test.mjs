@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createPassportClient, generatePassportId, handoffPrompt } from '../core.js'
+import { createPassportClient, generatePassportId, handoffPrompt, runUkingAction } from '../core.js'
 
 test('passport ids are short, opaque and human-readable', () => {
   const ids = new Set(Array.from({ length: 100 }, () => generatePassportId()))
@@ -92,4 +92,38 @@ test('handoff prompt says what transfers and what does not', () => {
   const prompt = handoffPrompt('TP-7K4M-9D2Q')
   assert.match(prompt, /已验证事实/)
   assert.match(prompt, /不继承.*聊天记录/)
+})
+
+test('a machine without U-King is pointed at the standalone store, not at installing U-King', async () => {
+  // Field problem, 2026-08-16: someone running only Codex or DSH has no U-King and
+  // does not want one. The old message read "Set TASK_PASSPORT_UKING to U-King.exe",
+  // which tells them to install a product they never asked for. The standalone
+  // store is the answer for them, so it must come first.
+  // Hermetic: this box HAS U-King, and the win32 branch always appends the
+  // LOCALAPPDATA candidates, so the absence must be staged rather than assumed.
+  const saved = {
+    LOCALAPPDATA: process.env.LOCALAPPDATA,
+    TASK_PASSPORT_UKING: process.env.TASK_PASSPORT_UKING,
+    UKING_EXECUTABLE: process.env.UKING_EXECUTABLE,
+  }
+  for (const key of Object.keys(saved)) delete process.env[key]
+  try {
+    await assert.rejects(
+      () => runUkingAction('runtime.origin.inspect', {}, { ukingExecutable: '/definitely/not/here.exe' }),
+      (error) => {
+        assert.match(error.message, /--store/, 'must offer the standalone store')
+        assert.match(error.message, /TASK_PASSPORT_STORE/, 'must name the env var too')
+        assert.ok(
+          error.message.indexOf('--store') < error.message.indexOf('TASK_PASSPORT_UKING'),
+          'the no-U-King path must be listed before the U-King path',
+        )
+        return true
+      },
+    )
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  }
 })
