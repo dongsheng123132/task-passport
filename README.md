@@ -71,6 +71,11 @@ task-passport outbox --store D:\TaskPassports --show 1     # 打开当时那份�
 
 `land` 也读得懂早期发出去的 `.tpx.json`：格式换代不能把首批用户扔掉。
 
+**丑话说在前：TaskPack 0.1 不保证完整性。** `conformance` 判的是结构合规，不是内容齐全——
+包里有什么就只有什么，它无法证明「该带的都带了」，也没有内建签名或第三方见证。
+谁也不能拿一个绿色 conformance 结论当「内容无遗漏」的证明。要对完整性较真，
+请在包外另做验证：ask 回执、逐项清单核对、或包外签名/公证。
+
 ## 在 DeepSeek Harness 中安装
 
 从 GitHub 安装（纯 JavaScript，仓库已包含运行产物，不需要 `prepare` 构建权限）：

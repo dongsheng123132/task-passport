@@ -1,6 +1,6 @@
 {
   "name": "task-passport",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "TaskPack: an open, offline task-handoff container. Task Passport is the durable state; TaskPack is the box it travels in.",
   "type": "module",
   "main": "index.js",
