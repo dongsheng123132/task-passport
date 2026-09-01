@@ -225,6 +225,8 @@ npm run check
 npm run pack:check
 ```
 
+贡献方式与本地校验要求见 [CONTRIBUTING.md](CONTRIBUTING.md)。安全漏洞请勿公开披露；维护者启用私密报告渠道后会在安全政策中公布具体方式。
+
 ## Google / Gemini 集成（Hackathon）
 
 参加 Google All Things Agentic Hackathon 的可选集成示例在 [`examples/gemini/`](examples/gemini/README.md)：
