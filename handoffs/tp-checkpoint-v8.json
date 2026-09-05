@@ -1,0 +1,24 @@
+{
+  "actions": [],
+  "artifacts": [],
+  "created_at": "2026-09-05T01:25:17Z",
+  "current_state": "Sol 七轮复审全部 APPROVE（Arena 1a8c304 + NightShift 1b8444d + TeamSpace 2f044f9/e97787e/3822907）。TeamSpace 只读 snapshot/integrity 接头 v1 落成并经主会话复核：getSnapshot/getIntegrity 包 coordination.mjs（0.5），只暴露 {spec,tasks,history_len,integrity}，无写动作、无历史明细、无 board 路径；schema 与运行时同形同样严格（含 \\S 跨换行 string 语义）；主会话 2026-09-05 重跑 verify-teamspace-readonly.mjs 复核为 11/11 全绿；coordination 38/38、nightshift 10/10 回归全绿。**主会话正式追认 TeamSpace 三个 commit 为已批准**（代码先于批准落地，事后追认，理由：均为只读 fail-closed 接头、已过 Sol 审稿修复、未碰 U-King，符合第 4 条线既定范围）。U-King 主线未碰。RunCenter 已获主会话批准开工。",
+  "decisions": [],
+  "facts": [],
+  "goal": "依次完成 Arena、NightShift、TeamSpace、RunCenter 的本源受控宿主与证据闭环；U-King 仅接入通过成熟闸门的能力。",
+  "harness": "task-passport-cli",
+  "id": "TP-4JMK-EKR6",
+  "kind": "task.origin",
+  "learnings": [],
+  "machine_id": "",
+  "next_steps": [
+    "RunCenter：本源受管、版本化 OTLP artifact 宿主 + 只读 import/inspect 契约（先 host，后 collector）；禁止读开发机静态目录或未跟踪 viewer；禁止开放公网 collector；synthetic TTFT/成本估算须显式标注",
+    "U-King 侧 RunCenter/TeamSpace 页摘除由主会话在 U-King 仓单独处理，不属于本护照范围（两页均纯前端原型，摘除不构成「已迁回」）"
+  ],
+  "scope": "",
+  "spec": "2origin/0.1",
+  "title": "本源 AI 计算机迁移：实验能力全路线",
+  "updated_at": "2026-09-05T00:00:00Z",
+  "verification": "TeamSpace: node agentteams/verify-teamspace-readonly.mjs → 11/11 pass（commit 3822907，Sol 终审 APPROVE，主会话 2026-09-05 复核重跑一致）。回归：verify-coordination 38/38，nightshift 10/10。NightShift 工作树干净。",
+  "version": 7
+}
