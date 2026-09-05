@@ -1,0 +1,23 @@
+{
+  "actions": [],
+  "artifacts": [],
+  "created_at": "2026-09-05T01:25:17Z",
+  "current_state": "Arena 与 NightShift 本轮修复完成，等待 Sol 复审。Arena (2origin-harness feat/otel-observe, commit c66c578): validateResult 运行时校验已添加，深层对象 unknown/secret 字段稳定拒绝，schema 与运行时同形，反测 8/8 全绿。NightShift (ShadowOS-nightshift feat/nightshift-protocol, commit ebea406): expires_at NaN 拒绝 + intent_ref URL/命令拒绝 + unsafe handoff 不回显 evidence_refs，反测 8/8 全绿。两线均保持dry-run/lab/EXECUTION_DISABLED不变，无真实执行、网络、写作。下一阶段 TeamSpace 只读 snapshot/integrity 接头须等 Sol 批准。",
+  "decisions": [],
+  "facts": [],
+  "goal": "依次完成 Arena、NightShift、TeamSpace、RunCenter 的本源受控宿主与证据闭环；U-King 仅接入通过成熟闸门的能力。",
+  "harness": "task-passport-cli",
+  "id": "TP-4JMK-EKR6",
+  "kind": "task.origin",
+  "learnings": [],
+  "machine_id": "",
+  "next_steps": [
+    "等待 Sol 复审 Arena 与 NightShift 修复，批准后方可按顺序启动 TeamSpace（只读 snapshot/integrity 接头），随后 RunCenter（受管 OTLP artifact 宿主）"
+  ],
+  "scope": "",
+  "spec": "2origin/0.1",
+  "title": "本源 AI 计算机迁移：实验能力全路线",
+  "updated_at": "2026-09-05T02:00:00Z",
+  "verification": "Arena: node --test experiments/arena/arena.test.mjs → 8/8 pass (commit c66c578)。NightShift: node --test runtime/nightshift/nightshift.test.mjs → 8/8 pass (commit ebea406)。两线均无 diff 泄漏、无工作树污染。",
+  "version": 2
+}
