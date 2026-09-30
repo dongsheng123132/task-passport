@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildBag, mergeReceipt, recordSentAsks, verifyBag } from '../bag.js'
+import { buildBag, mergeReceipt, recordSentAsks, unpackState, verifyBag } from '../bag.js'
 
 /**
  * A receipt is the answer coming home. These tests exist because the failure they guard
@@ -211,4 +211,46 @@ test('记进护照的 ask 一条不少——回执才有归处', () => {
   // 这才是这一组测试的理由：护照记住了问题，答案就能自己回家。
   const { report } = mergeReceipt(receipt(), { ...asker(), asks: recorded })
   assert.deepEqual(report.answered, ['a1'])
+})
+
+// ---- 真实往返：回执从「落地后新开的那本」打出来，而不是拿提问方自己的号拼 ----
+//
+// 上面的 receipt() 用提问方自己的护照打回执，所以一直是绿的；真实流程里对方手上是
+// land 新开的另一本，回执写的是那本的号，合并被拒——78 项全绿，功能却走不通。
+
+/** One hop: pack `from` as a handoff, land it on the far side under `localId`. */
+const hop = (from, localId, machine) => {
+  const bag = verifyBag(buildBag({ state: from, actor: from.id, machine: `${from.id}-机`, asks: from.asks })).passport
+  return { ...unpackState(bag, { machine, localId }), version: 1 }
+}
+
+/** The far side answers every open ask and packs a receipt from its OWN passport. */
+const replyFrom = (landed) => {
+  const asks = landed.asks.map((ask) => ({ ...ask, status: 'answered', answer: `答复 ${ask.id}` }))
+  return verifyBag(buildBag({ state: { ...landed, asks }, actor: '张老师', machine: '客户机', kind: 'receipt', asks })).passport
+}
+
+test('land 新开的那本打出的回执，能合并回提问的那本', () => {
+  const landed = hop(asker(), 'TP-LAND-0001', '客户机')
+  assert.equal(landed.lineage.root_id, 'TP-ASK1-0001', '落地的护照必须记住它从哪来')
+
+  const back = replyFrom(landed)
+  assert.deepEqual(back.lineage.chain, ['TP-ASK1-0001@4', 'TP-LAND-0001@1'], '回执要在血缘上续一段，不是从自己重新起头')
+
+  const { state, report } = mergeReceipt(back, asker())
+  assert.deepEqual(report.answered, ['a1', 'a2'])
+  assert.equal(state.id, 'TP-ASK1-0001')
+})
+
+test('三跳 A→B→C：C 的回执回到直接上游 B，不是根 A', () => {
+  const b = { ...hop(asker(), 'TP-BBBB-0002', 'B机'), asks: [
+    { id: 'b1', to: 'peer', what: '封面用哪版', accept: '回复 v1 或 v2 之一', status: 'open', answer: null },
+  ] }
+  const c = hop(b, 'TP-CCCC-0003', 'C机')
+  assert.equal(c.lineage.root_id, 'TP-ASK1-0001', 'root_id 是整条链的根，跨跳不变')
+
+  const back = replyFrom(c)
+  assert.equal(back.lineage.chain.length, 3)
+  assert.deepEqual(mergeReceipt(back, b).report.answered, ['b1'])
+  assert.throws(() => mergeReceipt(back, asker()), /this receipt answers TP-BBBB-0002/, '问题是 B 提的，答案不能落到 A')
 })
