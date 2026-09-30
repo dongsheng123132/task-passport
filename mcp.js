@@ -9,7 +9,7 @@ import { outboxDirectory, recordOutbound } from './outbox.js'
 import { createDirectoryPassportProvider } from './store.js'
 import { conformance, fromFlat, lintForExport, toFlat } from './taskpack.js'
 
-const SERVER_VERSION = '0.3.0'
+const SERVER_VERSION = '0.3.2'
 const SUPPORTED_PROTOCOLS = new Set(['2025-06-18', '2025-03-26', '2024-11-05'])
 
 export const passportTools = [

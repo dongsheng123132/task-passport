@@ -81,7 +81,7 @@ task-passport outbox --store D:\TaskPassports --show 1     # 打开当时那份�
 从 GitHub 安装（纯 JavaScript，仓库已包含运行产物，不需要 `prepare` 构建权限）：
 
 ```sh
-dsh plugin --profile web add task-passport@0.3.0
+dsh plugin --profile web add task-passport@0.3.2
 dsh --profile web --dump-config
 dsh web
 ```
@@ -165,8 +165,8 @@ const client = createPassportClient({ provider, harness: 'my-dashboard' })
 同一个 npm 包也提供标准输入输出 MCP 服务。Claude Code 和 Codex 只是薄适配器，仍然读写同一本护照：
 
 ```powershell
-claude mcp add --scope user task-passport -- npx --yes task-passport@0.3.0 mcp
-codex mcp add task-passport -- npx --yes task-passport@0.3.0 mcp
+claude mcp add --scope user task-passport -- npx --yes task-passport@0.3.2 mcp
+codex mcp add task-passport -- npx --yes task-passport@0.3.2 mcp
 ```
 
 接入后，两边都能看到相同的七个工具：`task_passport_list` / `open` / `new` / `checkpoint` / `pack` / `land` / `conformance`。如果是 U-King 便携版，可给 MCP 进程设置 `TASK_PASSPORT_UKING` 指向实际 exe。
@@ -174,8 +174,8 @@ codex mcp add task-passport -- npx --yes task-passport@0.3.0 mcp
 > 🇨🇳 **中国大陆网络必读**：`registry.npmjs.org` 的可达性**因网络而异**，实测（2026-08-15）阿里云杭州 IDC 出口 `ECONNRESET`／超时，`npx --yes task-passport@0.2.2`（当时的版本）直接装不上；同日某住宅宽带则 1.8s HTTP 200 正常。**换镜像是无脑安全的做法**（实测 61s 装好）。把护照交给同事时，**这一条要一起发过去**，否则对方可能第一步就卡死：
 >
 > ```powershell
-> claude mcp add --scope user task-passport -- npx --yes --registry https://registry.npmmirror.com task-passport@0.3.0 mcp
-> codex mcp add task-passport -- npx --yes --registry https://registry.npmmirror.com task-passport@0.3.0 mcp
+> claude mcp add --scope user task-passport -- npx --yes --registry https://registry.npmmirror.com task-passport@0.3.2 mcp
+> codex mcp add task-passport -- npx --yes --registry https://registry.npmmirror.com task-passport@0.3.2 mcp
 > ```
 >
 > 同理，`task-passport list` 这类 CLI 调用在国内也应带 `--registry https://registry.npmmirror.com`（或 `npm config set registry`）。

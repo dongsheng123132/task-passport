@@ -9,7 +9,7 @@ import { outboxDirectory, readArchived, readOutbox, recordOutbound } from './out
 import { createDirectoryPassportProvider } from './store.js'
 import { conformance, fromFlat, lintForExport, toFlat } from './taskpack.js'
 
-const VERSION = '0.3.0'
+const VERSION = '0.3.2'
 
 /**
  * Read a TaskPack in either encoding. A zip starts with "PK"; anything else is
