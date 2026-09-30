@@ -36,6 +36,6 @@
   "conformance": {
     "command": "task-passport conformance <file>",
     "exit_codes": { "0": "conformant", "2": "not conformant" },
-    "checks": ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10"]
+    "checks": ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10"]
   }
 }

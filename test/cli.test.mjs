@@ -103,3 +103,35 @@ test('doctor warns when a second authoritative store is also reachable', async (
     if (report.warning) assert.ok(report.other_provider, 'a warning must name the other provider')
   })
 })
+
+// Regression: the receipt round trip only ever worked in unit tests that packed the
+// receipt from the ASKING passport's own id. Through the real commands the far side
+// packs from the passport `land` opened for it, and `land --into` refused the answer.
+test('a receipt packed from a landed passport merges back through land --into', async () => {
+  await withStore(async (home) => {
+    await withStore(async (away) => {
+      const asker = await cli(home, ['new', '--title', 'round trip', '--goal', 'answers come home'])
+      const handoff = join(home, 'out.taskpack.json')
+      await cli(home, ['pack', asker.passport_id, '--out', handoff, '--flat',
+        '--ask', 'which layout|reply with exactly one of A, B or C'])
+
+      const landed = await cli(away, ['land', handoff])
+      const opened = await cli(away, ['open', landed.passport_id])
+      const asks = opened.state.asks.map((ask) => ({ ...ask, status: 'answered', answer: 'C' }))
+      const stateFile = join(away, 'answered.json')
+      await writeFile(stateFile, JSON.stringify({ ...opened.state, asks }), 'utf8')
+      await cli(away, ['checkpoint', '--file', stateFile, '--expected-version', String(opened.state_version)])
+
+      const asksFile = join(away, 'asks.json')
+      await writeFile(asksFile, JSON.stringify(asks), 'utf8')
+      const receipt = join(away, 'receipt.taskpack.json')
+      await cli(away, ['pack', landed.passport_id, '--kind', 'receipt', '--asks', asksFile, '--out', receipt, '--flat'])
+
+      const merged = await cli(home, ['land', receipt, '--into', asker.passport_id])
+      assert.equal(merged.ok, true)
+      assert.deepEqual(merged.answered, ['a1'])
+      const after = await cli(home, ['open', asker.passport_id])
+      assert.equal(after.state.asks.find((ask) => ask.id === 'a1').status, 'answered')
+    })
+  })
+})

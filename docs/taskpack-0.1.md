@@ -84,6 +84,16 @@ ignored: a file nobody vouched for is as bad as a corrupted one.
 
 `encoding` is `utf8` when the bytes survive a JSON round trip as text, otherwise
 `base64`. A declared `sha256` that does not match its own bytes MUST abort the read.
+A reader MUST reject a `taskpack` value it does not recognise (§8).
+
+`sha256` is the flat form's manifest entry. A reader MAY land an attachment that declares
+none — a colleague's AI writing a receipt by hand cannot compute one — but a pack with such
+an attachment is not conformant as written (`C0`, §6): a file nobody vouched for is as bad
+as a corrupted one, in either encoding.
+
+A writer MAY refuse to produce the flat form when an attachment exceeds 1 MiB
+(`max_inline_attachment_bytes` in the A2A descriptor) — that is a limit on what a chat app
+will carry, not on the model, so such a pack travels as `.taskpack`.
 
 ## 3. The pack object
 
@@ -93,7 +103,8 @@ ignored: a file nobody vouched for is as bad as a corrupted one.
   "kind": "handoff",                  // handoff | receipt
   "packed_at": "2026-08-16T03:11:04Z",
   "origin":  { "actor": "…", "machine": "…", "harness": "…" },
-  "lineage": { "root_id": "TP-G6RZ-DS3B", "from_version": 3, "chain": ["TP-G6RZ-DS3B@3"] },
+  "lineage": { "root_id": "TP-G6RZ-DS3B", "from_version": 2,
+               "chain": ["TP-G6RZ-DS3B@3", "TP-K2VQ-8M4N@2"] },
   "note": "one line for the receiver",
   "passport": { /* task state: goal, current_state, facts, decisions, artifacts, next_steps */ },
   "asks": [ … ],                      // §4.3
@@ -101,12 +112,23 @@ ignored: a file nobody vouched for is as bad as a corrupted one.
 }
 ```
 
+`lineage` records every passport the task has passed through:
+
+- `chain` — one `<passport id>@<version>` per hop, oldest first. The **last entry is the
+  sender**: the passport this pack was made from, at the version it was made from.
+- `root_id` — the first passport in the chain. It does not change as the task moves on.
+- `from_version` — the sender's version (the number after `@` in the last entry).
+
 ### 3.1 Identity: the receiver mints a new id
 
 The receiver MUST create a **new local passport id** and record the sender's in
 `lineage`. Two machines then hold two passports, each authoritative for itself, and the
 chain says they are two segments of one task. Reusing the sender's id creates two
 "authoritative" copies of one record, which is the failure this design exists to avoid.
+
+The receiver MUST keep the pack's `lineage` on the passport it lands, and a pack made from
+that passport MUST extend the chain — the kept entries, then its own — rather than start a
+new one. A chain that restarts at every hop cannot say where a receipt goes (§4.4.1).
 
 ## 4. Required behaviour
 
@@ -132,7 +154,13 @@ how someone else would verify it, it is `machine`.
 Sealing sets `verified: false`, `needs_reverify: true`, and records `verified_on` — the
 machine where it *was* proven. Recording where matters: it separates "this machine is
 different" from "same machine, I just cannot reach that path right now". An
-implementation MAY restore a ✓ only when the landing machine equals `verified_on`.
+implementation MAY restore a ✓ only when the landing machine equals `verified_on`, and
+only on an explicit choice by the human landing it.
+
+`verified_on` is written by whoever wrote the pack, like every other byte of it (§4.5). A
+pack made by hand can name the receiver's own machine. Matching it proves the pack *says*
+the fact was proven here, not that it was — so restoring trusts the pack's whole journey,
+and belongs to packs the receiver made itself.
 
 ### 4.3 Asks
 
@@ -160,6 +188,12 @@ the failure is silent — the pack itself looks perfect (§4.6).
 Required checks MUST be placed ahead of the sender's own next steps when the pack lands.
 This step is the entire difference between TaskPack and mailing someone a document.
 
+The *check* is what is required; the sender's `how` is not. `how` is a suggestion written
+by someone else and is data under §4.5 like any other field: a receiver MUST present it
+as the sender's, and MUST NOT execute a command taken from it without its own human's
+confirmation. A required check placed first is exactly where an injected command would do
+the most damage.
+
 ### 4.4.1 Receipts come home; handoffs do not
 
 §3.1 requires the receiver to mint a new id. That rule is about a **handoff**: two
@@ -171,9 +205,13 @@ hold went out and asked, so landing it into a *new* passport leaves the original
 sitting `open` forever while a human retypes every answer — the "nothing gets dropped"
 promise, broken on the last step. Therefore:
 
-1. A receipt MAY be merged into the passport whose id equals its `lineage.root_id`.
-   An implementation MUST refuse to merge it into any other passport, and MUST refuse
-   to merge a `handoff` at all.
+1. A receipt answers the passport its sender was landed from: the entry **before the
+   last** in `lineage.chain` (the last entry is the sender itself, §3). It MAY be merged
+   into that passport only. On the first hop that is `root_id`; after that it is not —
+   in A→B→C, a receipt from C answers B, whose questions C was carrying. A chain with a
+   single entry has no upstream (the receipt was packed from the asking passport's own
+   id); then `root_id` names the target. An implementation MUST refuse to merge a
+   receipt into any other passport, and MUST refuse to merge a `handoff` at all.
 2. A merge writes `answer` and `status` onto the matching asks, and MAY record
    `answered_by` / `answered_at`. It MUST NOT overwrite the target's goal, current
    state or next steps: **an answer is not a licence to rewrite the task.**
@@ -241,14 +279,16 @@ task-passport conformance <file>     # exit 0 = conformant, 2 = not
 | C3 | `kind` is `handoff` or `receipt` |
 | C4 | lineage carries `root_id` and `from_version` |
 | C5 | every ask has an `accept` |
-| C6 | **no machine-scoped fact crosses wearing a ✓** |
-| C7 | no credentials |
+| C6 | **no machine-scoped fact crosses wearing a ✓** — a fact with no `scope` counts as machine-scoped (§4.2) |
+| C7 | no credentials, in any field of the pack object or in the luggage |
 | C8 | no chat transcript |
-| C9 | the two encodings round-trip byte-for-byte |
+| C9 | the two encodings round-trip byte-for-byte, whatever the attachments' size |
 | C10 | `packed_at` is declared |
 
 Most of these are written so that a *wrong* pack fails. A suite whose checks cannot go
-red proves nothing.
+red proves nothing. `C7` and `C8` MUST use the same patterns the implementation refuses
+to pack with: a judge that is looser than the writer reports packs as conformant that no
+conformant writer could have produced.
 
 `C0` deserves a note, because it was found the hard way on a clean machine. A reader that
 normalises what it loads — sealing a machine-scoped fact that arrived still marked
