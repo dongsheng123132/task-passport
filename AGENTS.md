@@ -3,11 +3,16 @@
 > 在这个目录开终端的第一件事：**打开护照，不要读聊天记录。**
 >
 > ```
-> 护照 TP-3XZB-X84A  —— 本仓库的常驻状态
+> 护照 TP-3XZB-X84A  —— 本仓库的常驻状态（最后记录停在 v0.3.1，见下）
 > ```
 > MCP 已在 `.mcp.json` 里配好（`task_passport_open`）；没有 MCP 时用
 > `node cli.js open TP-3XZB-X84A`。改状态走 `checkpoint` 并带 `expected_version`——
 > 它会拒绝陈旧版本，而不是静默盖掉另一个终端。
+>
+> ⚠️ **这本护照的真身在 Windows 那台（pc-3116）的 U-King store**：
+> `C:\Users\ZhuanZ\.uking\origin\TP-3XZB-X84A.json`。Mac 的 store 里没有它——
+> `node cli.js list` 看不到时别以为丢了。本机独立干活用 `--store <目录>`
+> （或 `TASK_PASSPORT_STORE`），以本文件 + `git log` 为准。
 
 ## 这是什么
 
@@ -35,7 +40,7 @@
 ## 常用命令
 
 ```bash
-npm test          # 47 项，多数是反向用例
+npm test          # 90 项，多数是反向用例（含发布产物与版本一致性守卫）
 npm run check     # 语法检查全部入口文件
 npm run pack:check
 node cli.js doctor --store <dir>    # 会告警两个权威 store 同时在线
@@ -44,25 +49,22 @@ node site/build.mjs                 # 站点从 docs/ 重建，构建会拒绝�
 
 ## 当前状态摘要（详细版在护照里，以护照为准）
 
-- `main` 与 `origin/main` 同步，taskpack.org 三个端点 200。
-- **npm 上 latest 已经是 0.3.0**（2026-08-16 以 `npm view task-passport version` 实查）。
-  「文档说有、npm 上没有」这个缺口已经关闭。发布状态**只以 `npm view` 为准**，CI 绿灯不算数。
-- **工作区有未提交改动，两块：**
-  ① **回执合并 `land --into`**。它顺带暴露并修掉一个上游缺口：**`pack` 从前不把提出的 ask
-  记进护照**，于是回执回来时无处可归、只能人工重录；现在 `pack` 会写回护照（幂等，
-  内容没变不撞版本），输出里带 `asks_recorded`。
-  ② **发件台账 `outbox.js` + `task-passport outbox`**。每次 pack 追加一行 JSONL 并存一份
-  当时那份护照的**存根**（存的是封存后、真出门的那版）。回答「上周发给客户的那个包里到底有什么」。
-  存根文件名带包的 sha256 前 8 位——**没有它，同一版同一秒打两个包会撞名互相覆盖**（冒烟时抓到的）。
-  台账不是公证，能写 store 的人就能改它，README 里写明了这一条。
-  测试 78/78，新增 `test/merge-receipt.test.mjs`(18) 与 `test/outbox.test.mjs`(12)，逐项变异验证过。
-- **三机实测过（2026-08-16）**：两台 macOS + 一台 Windows Server，conformance 各 10/10、
-  附件字节全一致、封存规则双向有效。**手填回执若加一条自己机器的事实并标 verified，会掉 C0**——
-  落地宽容、判定严格，属预期行为，但要在给客户的说明里讲清楚。
-- 本地分支 `fix/windows-bom-and-store-guardrails` 领先 main 8 个 commit 且**没有远端副本**。
-  内容已以别的 commit 进了 main。**不要 push 它**：它的历史里 commit 了 `docs/STRATEGY.md`，
-  而那份文件在 main 上是被 `.gitignore` 明文排除的内部判断。
-- 工作区 3 个 `.tp-*.mjs` 是另一个终端留下的未跟踪探针，不属于任何提交。
+- `main` 与 `origin/main` 同步；CI 三平台（ubuntu / windows / macOS）跑 Node 22 全绿；
+  taskpack.org 三个端点 200。GitHub Releases 由 `release.yml` 在发 npm 后自动创建。
+- **npm 上 latest = 0.3.2**（2026-11-03 发布，带 SLSA provenance）。
+  历史坑：**0.3.1 的 npm 包缺 `outbox.js`**，而 `cli.js` / `mcp.js` 第一行就 import 它——
+  CLI 与 MCP 启动即 `ERR_MODULE_NOT_FOUND`。0.3.2 已修（`package.json` files 补上、
+  发布前 tarball 守卫点名 8 个入口文件、回归测试兜住），0.3.0 与 0.3.1 的 GitHub Release
+  是补建的，0.3.1 的 notes 里写明了这个缺陷。**发布状态只以 `npm view` 为准**，CI 绿灯不算数。
+- 测试 **90/90**。本轮三条回归测试都做过变异验证（去掉修复必红）：
+  `test/publish.test.mjs`（tarball 必须覆盖入口 import 的本地模块；README 安装 pin 必须等于
+  package.json）、`test/core.test.mjs`（U-King 候选改为可注入，macOS 装了 U-King 也不再误判）。
+- 工作区杂物在本机 `.git/info/exclude` 里隔离（**不随仓库分发**）：`site-web/`
+  （taskpassport.com 产品站，构建通过 4 页，归属待定）、`handoffs/outbox.jsonl` 与
+  `handoffs/outbox/`、`handoffs/TP-GOAI-FINAL-0917.json`。`.tp-*.mjs` 三个探针仍按 .gitignore 忽略。
+- **护照本身停在 v0.3.1 已发布（2026-08-26 的记录）**，还没记 0.3.2；下次开护照时先补这一笔。
+- 已知待升级（不阻塞发版）：Actions 仍 v4（runner 已警告 Node 20 弃用；checkout/setup-node
+  最新 v7，pages 两个 action 最新 v5）；`engines` 仍 >=20，计划随 0.3.3 抬到 22；Dependabot 关闭。
 
 ## 约定
 
