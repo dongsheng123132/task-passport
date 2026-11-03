@@ -63,7 +63,13 @@ async function canAccess(path) {
 }
 
 export async function runUkingAction(actionId, input = {}, options = {}) {
-  const candidates = executableCandidates(options.ukingExecutable)
+  // Candidate discovery is injectable so "this machine has no U-King" can be staged
+  // in a test. Clearing the environment variables is not enough: on macOS the
+  // platform branch appends /Applications/U-King.app unconditionally, so a machine
+  // that has U-King can never produce the no-U-King path by environment alone.
+  const candidates = Array.isArray(options.candidates)
+    ? [...new Set(options.candidates.filter((value) => typeof value === 'string' && value.trim()))]
+    : executableCandidates(options.ukingExecutable)
   const hasInput = input && Object.keys(input).length > 0
   const inputFile = hasInput
     ? join(tmpdir(), `task-passport-${process.pid}-${Date.now()}-${randomBytes(4).toString('hex')}.json`)

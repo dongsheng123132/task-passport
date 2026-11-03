@@ -99,31 +99,21 @@ test('a machine without U-King is pointed at the standalone store, not at instal
   // does not want one. The old message read "Set TASK_PASSPORT_UKING to U-King.exe",
   // which tells them to install a product they never asked for. The standalone
   // store is the answer for them, so it must come first.
-  // Hermetic: this box HAS U-King, and the win32 branch always appends the
-  // LOCALAPPDATA candidates, so the absence must be staged rather than assumed.
-  const saved = {
-    LOCALAPPDATA: process.env.LOCALAPPDATA,
-    TASK_PASSPORT_UKING: process.env.TASK_PASSPORT_UKING,
-    UKING_EXECUTABLE: process.env.UKING_EXECUTABLE,
-  }
-  for (const key of Object.keys(saved)) delete process.env[key]
-  try {
-    await assert.rejects(
-      () => runUkingAction('runtime.origin.inspect', {}, { ukingExecutable: '/definitely/not/here.exe' }),
-      (error) => {
-        assert.match(error.message, /--store/, 'must offer the standalone store')
-        assert.match(error.message, /TASK_PASSPORT_STORE/, 'must name the env var too')
-        assert.ok(
-          error.message.indexOf('--store') < error.message.indexOf('TASK_PASSPORT_UKING'),
-          'the no-U-King path must be listed before the U-King path',
-        )
-        return true
-      },
-    )
-  } finally {
-    for (const [key, value] of Object.entries(saved)) {
-      if (value === undefined) delete process.env[key]
-      else process.env[key] = value
-    }
-  }
+  // Hermetic: candidate discovery is injected here instead of assumed. Clearing
+  // the environment variables is not enough on macOS (and was the reason this test
+  // failed on a Mac that has U-King: the platform branch appends
+  // /Applications/U-King.app, which resolves and answers). A test that only passes
+  // on machines without U-King is not a test of this message.
+  await assert.rejects(
+    () => runUkingAction('runtime.origin.inspect', {}, { candidates: ['/definitely/not/here.exe'] }),
+    (error) => {
+      assert.match(error.message, /--store/, 'must offer the standalone store')
+      assert.match(error.message, /TASK_PASSPORT_STORE/, 'must name the env var too')
+      assert.ok(
+        error.message.indexOf('--store') < error.message.indexOf('TASK_PASSPORT_UKING'),
+        'the no-U-King path must be listed before the U-King path',
+      )
+      return true
+    },
+  )
 })

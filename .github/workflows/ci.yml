@@ -11,13 +11,16 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # macOS is not optional here: the U-King candidate discovery has a
+        # platform-specific branch, and a test that passes on Linux/Windows can still
+        # be unusable on a Mac that has U-King installed.
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - run: npm test
       - run: npm run check
       - run: npm run pack:check

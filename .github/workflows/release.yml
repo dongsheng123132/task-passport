@@ -15,7 +15,9 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # contents: write is for the release notes step below. npm itself still publishes
+  # through OIDC (id-token), not through this token.
+  contents: write
   id-token: write
 
 jobs:
@@ -46,20 +48,37 @@ jobs:
       - name: Refuse to ship a version whose own checks do not pass
         run: npm test
 
-      # The published tarball is what users actually get, so assert the two files that
-      # make this release meaningful are inside it. 0.2.2 shipped without them and the
-      # package could not hand anything off — that failure is what this guard is for.
-      # Read the actual tarball rather than npm's --json report: the report's shape has
+      # The published tarball is what users actually get, so assert every module the
+      # entry points import is inside it. 0.2.2 shipped without the handoff code, and
+      # 0.3.1 shipped without outbox.js — cli.js and mcp.js import it at the top, so
+      # `npx task-passport@0.3.1 --help` died with ERR_MODULE_NOT_FOUND. Read the
+      # actual tarball rather than npm's --json report: the report's shape has
       # changed between npm versions, and a guard that breaks when the tool it inspects
       # is upgraded is a guard you will end up deleting.
       - name: The tarball must contain the code that does the work
         run: |
           TGZ="$(npm pack --silent | tail -1)"
           tar -tzf "$TGZ" | sed 's|^package/||' | sort > /tmp/files.txt
-          for f in taskpack.js bag.js cli.js mcp.js core.js store.js; do
+          for f in taskpack.js bag.js cli.js mcp.js core.js outbox.js store.js index.js; do
             grep -qx "$f" /tmp/files.txt || { echo "missing from tarball: $f" >&2; exit 1; }
           done
           echo "tarball ok: $(wc -l < /tmp/files.txt) files"
           rm -f "$TGZ"
 
       - run: npm publish --provenance --access public
+
+      # A published package with no release entry is an audit gap: the tags existed
+      # for 0.3.0–0.3.2 but the Releases page still showed 0.2.2. Notes are generated
+      # from the commits since the previous tag, so they cannot drift from history.
+      - name: Publish the release notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "release $GITHUB_REF_NAME already exists"
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --title "Task Passport ${GITHUB_REF_NAME#v}" \
+              --generate-notes
+          fi
