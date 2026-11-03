@@ -62,7 +62,9 @@ node site/build.mjs                 # 站点从 docs/ 重建，构建会拒绝�
 - 工作区杂物在本机 `.git/info/exclude` 里隔离（**不随仓库分发**）：`site-web/`
   （taskpassport.com 产品站，构建通过 4 页，归属待定）、`handoffs/outbox.jsonl` 与
   `handoffs/outbox/`、`handoffs/TP-GOAI-FINAL-0917.json`。`.tp-*.mjs` 三个探针仍按 .gitignore 忽略。
-- **护照本身停在 v0.3.1 已发布（2026-08-26 的记录）**，还没记 0.3.2；下次开护照时先补这一笔。
+- **护照已更新到 v10（2026-11-03，在 Windows 那台的 store 里）**：记录了 0.3.2 发布、
+  0.3.1 打包缺陷与修复、CI/Release 自动化、以及本轮 5 个外部收录提交。Windows 副本已
+  `fetch + reset` 到 `8cf006d`（0.3.2）；本机 `/tmp` 留有只读快照，不作为第二权威 store。
 - 已知待升级（不阻塞发版）：Actions 仍 v4（runner 已警告 Node 20 弃用；checkout/setup-node
   最新 v7，pages 两个 action 最新 v5）；`engines` 仍 >=20，计划随 0.3.3 抬到 22；Dependabot 关闭。
 
