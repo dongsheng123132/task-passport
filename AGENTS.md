@@ -3,7 +3,7 @@
 > 在这个目录开终端的第一件事：**打开护照，不要读聊天记录。**
 >
 > ```
-> 护照 TP-3XZB-X84A  —— 本仓库的常驻状态（最后记录停在 v0.3.1，见下）
+> 护照 TP-3XZB-X84A  —— 本仓库的常驻状态（最后记录 v10 / 2026-11-03）
 > ```
 > MCP 已在 `.mcp.json` 里配好（`task_passport_open`）；没有 MCP 时用
 > `node cli.js open TP-3XZB-X84A`。改状态走 `checkpoint` 并带 `expected_version`——
