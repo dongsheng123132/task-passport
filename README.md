@@ -5,6 +5,8 @@
 [![Node.js 20+](https://img.shields.io/badge/Node.js-%E2%89%A520-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![DeepSeek Harness plugin](https://img.shields.io/badge/DeepSeek_Harness-plugin-0969da)](https://github.com/topics/dsh-plugin)
 
+作者 / Author：贺去病（贺方升 / Dosen）· [hequbing.com](https://www.hequbing.com)
+
 让一个任务带着“当前世界状态”在 DeepSeek Harness、Claude Code、Codex 等 AI Harness 之间接力，不搬运聊天记录。
 
 > **护照留在家里，TaskPack 出门。**
